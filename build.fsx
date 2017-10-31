@@ -4,12 +4,12 @@ open Fake
 open Fake.Testing
 
 Target "Build" <| fun _ ->
-    !! "Hedgehog.sln"
+    !! "Hedgehog.Experimental.sln"
     |> MSBuildRelease "" "Rebuild"
     |> ignore
 
 Target "Test" (fun _ ->
-    !! "**/bin/Release/*Hedgehog.*Tests.dll"
+    !! "**/bin/Release/*Hedgehog.Experimental.*Tests.dll"
     |> xUnit2 (fun p -> { p with Parallel = ParallelMode.All }))
 
 Target "NuGet" (fun _ ->

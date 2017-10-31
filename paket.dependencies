@@ -15,14 +15,4 @@ nuget FAKE 4.41.1
 nuget xunit.runner.console 2.1.0
 nuget xunit.runner.visualstudio 2.1.0 version_in_path: true
 nuget xunit.core 2.1.0
-
-github fsprojects/FSharpx.Collections:e2722ce571f4926586ae907413b4a5511f0ef74e src/FSharpx.Collections/Collections.fs
-github fsprojects/FSharpx.Collections:e2722ce571f4926586ae907413b4a5511f0ef74e src/FSharpx.Collections/LazyList.fsi
-github fsprojects/FSharpx.Collections:e2722ce571f4926586ae907413b4a5511f0ef74e src/FSharpx.Collections/LazyList.fs
-
 nuget Unquote 3.1.2
-
-group Testing
-    source https://nuget.org/api/v2
-
-    nuget Doctest
