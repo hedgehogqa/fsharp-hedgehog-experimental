@@ -20,3 +20,5 @@ tags
     fsharp, f#, testing
 excludeddependencies
     FSharp.Core
+dependencies
+    Hedgehog
