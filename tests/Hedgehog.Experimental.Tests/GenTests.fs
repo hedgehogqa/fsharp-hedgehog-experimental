@@ -120,3 +120,34 @@ let ``increasing4 generates a 4-tuple with strictly increasing elements`` () =
         x2 <! x3
         x3 <! x4
     }
+
+[<Fact>]
+let ``withMapTo is defined for all elements in input list`` () =
+    Property.check <| property {
+        let! xs, f = 
+            Gen.int (Range.exponentialBounded()) 
+            |> Gen.list (Range.linear 1 50) 
+            |> Gen.withMapTo (Gen.alphaNum)
+        xs |> List.map f |> ignore // should not throw
+    }
+
+[<Fact>]
+let ``withDistinctMapTo is defined for all elements in input list`` () =
+    Property.check <| property {
+        let! xs, f = 
+            Gen.int (Range.exponentialBounded()) 
+            |> Gen.list (Range.linear 1 50) 
+            |> Gen.withDistinctMapTo (Gen.alphaNum)
+        xs |> List.map f |> ignore // should not throw
+    }
+
+[<Fact>]
+let ``withDistinctMapTo guarantees that distinct input values map to distinct output values`` () =
+    Property.check <| property {
+        let! xs, f = 
+            Gen.int (Range.exponentialBounded()) 
+            |> Gen.list (Range.linear 1 50) 
+            |> Gen.withDistinctMapTo (Gen.alphaNum)
+        let xsDistinct = xs |> List.distinct
+        xsDistinct |> List.map f |> List.distinct |> List.length =! xsDistinct.Length
+}
