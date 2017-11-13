@@ -26,6 +26,17 @@ let ``notContains generates list that does not contain element`` () =
     }
 
 [<Fact>]
+let ``addElement generates a list with the specified element`` () =
+    Property.check <| property {
+        let! x = Gen.int (Range.exponentialBounded())
+        let! xs = 
+            Gen.int (Range.exponentialBounded()) 
+            |> Gen.list (Range.linear 0 10)
+            |> Gen.addElement x
+        return List.contains x xs
+    }
+
+[<Fact>]
 let ``sorted2 generates a sorted 2-tuple`` () =
     Property.check <| property {
         let! x1, x2 =
