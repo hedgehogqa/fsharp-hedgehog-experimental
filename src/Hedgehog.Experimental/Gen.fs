@@ -1,5 +1,6 @@
 ﻿module Hedgehog.Gen
 
+    open TypeShape
     open Hedgehog.Gen
 
     /// Shortcut for Gen.list (Range.exponential lower upper).
@@ -164,3 +165,173 @@
           let inOutMap = List.zip inputsDistinct outputs |> Map.ofList
           return inputs, (fun x -> inOutMap.Item x)
         }
+
+    type AutoGenConfig =
+      {Byte: Gen<byte>
+       Int16: Gen<int16>
+       Int: Gen<int>
+       Int64: Gen<int64>
+       Double: Gen<double>
+       Decimal: Gen<decimal>
+       Bool: Gen<bool>
+       Guid: Gen<System.Guid>
+       Char: Gen<System.Char>
+       DateTime: Gen<System.DateTime>
+       String: Gen<System.String>
+       DateTimeOffset: Gen<System.DateTimeOffset>
+       SeqRange: Range<int> // range for lists, arrays, etc.
+       }
+
+    let defaults =
+      {Byte = Gen.byte <| Range.exponentialBounded()
+       Int16 = Gen.int16 <| Range.exponentialBounded()
+       Int = Gen.int <| Range.exponentialBounded()
+       Int64 = Gen.int64 <| Range.exponentialBounded()
+       Double = Gen.double <| Range.exponentialBounded()
+       Decimal = Gen.double <| Range.exponentialBounded() |> Gen.map decimal
+       Bool = Gen.bool
+       Guid = Gen.guid
+       Char = Gen.latin1
+       DateTime = Gen.dateTime
+       String = Gen.string (Range.linear 0 50) Gen.latin1
+       DateTimeOffset = Gen.dateTime |> Gen.map System.DateTimeOffset
+       SeqRange = Range.exponential 0 50}
+
+    let rec auto'<'T> (config:AutoGenConfig) : Gen<'T> =
+      let wrap (t : Gen<'a>) =
+        unbox<Gen<'T>> t
+  
+      let mkRandomMember (shape : IShapeWriteMember<'DeclaringType>) = 
+        shape.Accept {
+          new IWriteMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
+            member __.Visit(shape : ShapeWriteMember<'DeclaringType, 'Field>) = 
+              let rf = auto'<'Field>(config)
+              gen { let! f = rf
+                    return fun dt -> shape.Inject dt f } }
+
+      match TypeShape.Create<'T>() with
+      | Shape.Byte -> wrap config.Byte
+      | Shape.Int16 -> wrap config.Int16
+      | Shape.Int32 -> wrap config.Int
+      | Shape.Int64 -> wrap config.Int64
+    
+      | Shape.Double -> wrap config.Double
+      | Shape.Decimal -> wrap config.Decimal
+    
+      | Shape.Bool -> wrap config.Bool
+      | Shape.Guid -> wrap config.Guid
+      | Shape.Char -> wrap config.Char
+      | Shape.DateTime -> wrap config.DateTime
+
+      | Shape.Unit -> wrap (Gen.constant ())
+
+      | Shape.String -> wrap config.String
+      | Shape.DateTimeOffset -> wrap config.DateTimeOffset
+
+      | Shape.FSharpOption s -> 
+        s.Accept {
+          new IFSharpOptionVisitor<Gen<'T>> with
+            member __.Visit<'t>() = 
+              auto'<'t> config |> Gen.option |> wrap }
+
+      | Shape.Array s when s.Rank = 1 -> 
+        s.Accept { 
+          new IArrayVisitor<Gen<'T>> with
+            member __.Visit<'t> _ = 
+              auto'<'t> config |> Gen.array config.SeqRange |> wrap }
+
+      | Shape.Array _ -> 
+        raise (System.NotSupportedException("Can only generate arrays of rank 1"))
+
+      | Shape.FSharpList s -> 
+        s.Accept {
+          new IFSharpListVisitor<Gen<'T>> with
+            member __.Visit<'t> () = 
+              auto'<'t> config |> Gen.list config.SeqRange |> wrap }
+
+      | Shape.FSharpSet s -> 
+        s.Accept {
+          new IFSharpSetVisitor<Gen<'T>> with
+            member __.Visit<'t when 't : comparison> () = 
+              auto'<'t list> config 
+              |> Gen.map Set.ofList 
+              |> wrap }
+
+      | Shape.FSharpMap s -> 
+        s.Accept {
+          new IFSharpMapVisitor<Gen<'T>> with
+            member __.Visit<'k, 'v when 'k : comparison> () = 
+              auto'<('k * 'v) list> config
+              |> Gen.map Map.ofList
+              |> wrap }
+
+      | Shape.Tuple (:? ShapeTuple<'T> as shape) -> 
+        let eGens =
+          shape.Elements
+          |> Array.map mkRandomMember
+
+        gen { 
+          let mutable target = shape.CreateUninitialized ()
+          for eg in eGens do
+            let! u = eg
+            target <- u target
+          return target
+        }
+
+      | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) -> 
+        let fieldGen =
+          shape.Fields
+          |> Array.map mkRandomMember
+
+        gen { 
+          let mutable target = shape.CreateUninitialized ()
+          for eg in fieldGen do
+            let! u = eg
+            target <- u target
+          return target
+        }
+
+      | Shape.FSharpUnion (:? ShapeFSharpUnion<'T> as shape) -> 
+        let caseFieldGen =
+          shape.UnionCases
+          |> Array.map (fun uc -> uc.Fields |> Array.map mkRandomMember)
+
+        gen { 
+          let! tag = Gen.integral <| Range.constant 0 (caseFieldGen.Length - 1)
+          let mutable u = shape.UnionCases.[tag].CreateUninitialized ()
+          for f in caseFieldGen.[tag] do
+            let! uf = f
+            u <- uf u
+          return u
+        }
+
+      | Shape.CliMutable (:? ShapeCliMutable<'T> as shape) -> 
+        let propGen = shape.Properties |> Array.map mkRandomMember
+        gen { 
+          let mutable target = shape.CreateUninitialized ()
+          for ep in propGen do
+            let! up = ep
+            target <- up target
+          return target
+        }
+
+      | Shape.Poco (:? ShapePoco<'T> as shape) -> 
+        let bestCtor = 
+          shape.Constructors
+          |> Seq.filter  (fun c -> c.IsPublic)
+          |> Seq.sortBy  (fun c -> c.Arity)
+          |> Seq.tryHead
+
+        match bestCtor with
+        | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'T>
+        | Some ctor -> 
+          ctor.Accept {
+            new IConstructorVisitor<'T, Gen<'T>> with
+              member __.Visit<'CtorParams> (ctor : ShapeConstructor<'T, 'CtorParams>) = 
+                let paramGen = auto'<'CtorParams> (config)
+                gen { let! args = paramGen
+                  return ctor.Invoke args } }
+
+      | _ -> raise (System.NotSupportedException ())
+
+    let auto<'T>() = auto'<'T>(defaults)
