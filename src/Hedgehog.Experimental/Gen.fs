@@ -52,6 +52,15 @@
     let notContains (x: 'a) : (Gen<'a list> -> Gen<'a list>) =
       filter (not << List.contains x)
 
+    /// Inserts the given element at a random place in the list
+    let addElement (x : 'a) (g : Gen<'a list>) : Gen<'a list> =
+        gen {
+          let! xs = g
+          let! i = integral (Range.constant 0 xs.Length)
+          let l1, l2 = xs |> List.splitAt i
+          return List.concat [l1; [x]; l2]
+        }
+
     /// Generates a 2-tuple with sorted elements.
     let sorted2 (g : Gen<'a * 'a>) : Gen<'a * 'a> =
         g |> map (fun (x1, x2) ->
