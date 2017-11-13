@@ -151,4 +151,35 @@ let ``dateInterval with negative interval generates increasing dates`` () =
     Property.check <| property {
         let! d1, d2 = Gen.dateInterval (Range.linear 0 -100)
         d2 <=! d1
+    }
+
+[<Fact>]
+let ``withMapTo is defined for all elements in input list`` () =
+    Property.check <| property {
+        let! xs, f = 
+            Gen.int (Range.exponentialBounded()) 
+            |> Gen.list (Range.linear 1 50) 
+            |> Gen.withMapTo (Gen.alphaNum)
+        xs |> List.map f |> ignore // should not throw
+    }
+
+[<Fact>]
+let ``withDistinctMapTo is defined for all elements in input list`` () =
+    Property.check <| property {
+        let! xs, f = 
+            Gen.int (Range.exponentialBounded()) 
+            |> Gen.list (Range.linear 1 50) 
+            |> Gen.withDistinctMapTo (Gen.alphaNum)
+        xs |> List.map f |> ignore // should not throw
+    }
+
+[<Fact>]
+let ``withDistinctMapTo guarantees that distinct input values map to distinct output values`` () =
+    Property.check <| property {
+        let! xs, f = 
+            Gen.int (Range.exponentialBounded()) 
+            |> Gen.list (Range.linear 1 50) 
+            |> Gen.withDistinctMapTo (Gen.alphaNum)
+        let xsDistinct = xs |> List.distinct
+        xsDistinct |> List.map f |> List.distinct |> List.length =! xsDistinct.Length
 }
