@@ -95,3 +95,21 @@
     /// Generates a 4-tuple with strictly increasing elements.
     let increasing4 (g : Gen<'a * 'a * 'a * 'a>) : Gen<'a * 'a * 'a * 'a> =
         g |> sorted4 |> distinct4
+
+    /// Generates a tuple of datetimes where the range determines the minimum
+    /// and maximum number of days apart. Positive numbers means the datetimes
+    /// will be in increasing order, and vice versa.
+    let dateInterval (dayRange : Range<int>)
+            : Gen<System.DateTime * System.DateTime> =
+        gen {
+            let tickRange =
+                dayRange
+                |> Range.map (fun days ->
+                    Operators.int64 days * System.TimeSpan.TicksPerDay)
+            let! ticksApart = integral tickRange
+            let! dt1 = dateTime |> filter (fun dt ->
+                dt.Ticks + ticksApart > System.DateTime.MinValue.Ticks
+                && dt.Ticks + ticksApart < System.DateTime.MaxValue.Ticks)
+            let dt2 = dt1.AddTicks ticksApart
+            return dt1, dt2
+        }
