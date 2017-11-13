@@ -120,3 +120,24 @@ let ``increasing4 generates a 4-tuple with strictly increasing elements`` () =
         x2 <! x3
         x3 <! x4
     }
+
+[<Fact>]
+let ``dateInterval generates two dates spaced no more than the range allows`` () =
+    Property.check <| property {
+        let! d1, d2 = Gen.dateInterval (Range.linear 0 100)
+        (d2-d1).TotalDays <=! 100.
+    }
+
+[<Fact>]
+let ``dateInterval with positive interval generates increasing dates`` () =
+    Property.check <| property {
+        let! d1, d2 = Gen.dateInterval (Range.linear 0 100)
+        d2 >=! d1
+    }
+
+[<Fact>]
+let ``dateInterval with negative interval generates increasing dates`` () =
+    Property.check <| property {
+        let! d1, d2 = Gen.dateInterval (Range.linear 0 -100)
+        d2 <=! d1
+}
