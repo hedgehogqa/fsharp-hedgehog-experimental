@@ -173,6 +173,7 @@ module Gen =
             return inputs, (fun x -> inOutMap.Item x)
         }
 
+    [<CLIMutable; Struct>]
     type AutoGenConfig =
       {Byte: Gen<byte>
        Int16: Gen<int16>
