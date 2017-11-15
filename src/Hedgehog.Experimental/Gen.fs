@@ -2,7 +2,7 @@
 
 open System
 
-module Gen =
+module GenX =
     /// Shortcut for Gen.list (Range.exponential lower upper).
     let eList (lower : int) (upper : int) : (Gen<'a> -> Gen<List<'a>>) =
         Gen.list (Range.exponential lower upper)
