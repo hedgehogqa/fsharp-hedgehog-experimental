@@ -1,4 +1,4 @@
-﻿module Hedgehog.Gen
+﻿module Hedgehog.GenX
 
     open TypeShape
     open Hedgehog.Gen
