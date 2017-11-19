@@ -1,4 +1,4 @@
-﻿namespace Hedgehog.Tests.AssemblyInfo
+namespace Hedgehog.Tests.AssemblyInfo
 
 open System.Reflection
 open System.Runtime.CompilerServices

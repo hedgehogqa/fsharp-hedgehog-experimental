@@ -1,4 +1,4 @@
-﻿namespace Hedgehog
+namespace Hedgehog
 open System.Reflection
 open System.Runtime.CompilerServices
 
