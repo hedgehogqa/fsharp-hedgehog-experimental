@@ -1,4 +1,4 @@
-﻿module Hedgehog.Experimental.Tests.GenTests
+module Hedgehog.Experimental.Tests.GenTests
 
 open Xunit
 open Swensen.Unquote
