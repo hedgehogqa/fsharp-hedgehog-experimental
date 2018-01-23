@@ -196,7 +196,7 @@ type RecOption =
 [<Fact>]
 let ``auto with recursive option members does not cause stack overflow using default settings`` () =
     Property.check <| property {
-        let! _ = GenX.auto<RecOption>
+        let! _ = GenX.auto<RecOption>()
         return true
     }
 
@@ -228,7 +228,7 @@ type RecArray =
 [<Fact>]
 let ``auto with recursive array members does not cause stack overflow using default settings`` () =
     Property.check <| property {
-        let! _ = GenX.auto<RecArray>
+        let! _ = GenX.auto<RecArray>()
         return true
     }
 
@@ -260,7 +260,7 @@ type RecList =
 [<Fact>]
 let ``auto with recursive list members does not cause stack overflow using default settings`` () =
     Property.check <| property {
-        let! _ = GenX.auto<RecList>
+        let! _ = GenX.auto<RecList>()
         return true
     }
 
@@ -292,7 +292,7 @@ type RecSet =
 [<Fact>]
 let ``auto with recursive set members does not cause stack overflow using default settings`` () =
     Property.check <| property {
-        let! _ = GenX.auto<RecSet>
+        let! _ = GenX.auto<RecSet>()
         return true
     }
 
@@ -324,7 +324,7 @@ type RecMap =
 [<Fact>]
 let ``auto with recursive map members does not cause stack overflow using default settings`` () =
     Property.check <| property {
-        let! _ = GenX.auto<RecMap>
+        let! _ = GenX.auto<RecMap>()
         return true
     }
 
@@ -371,8 +371,8 @@ and MutuallyRecursive2 =
 [<Fact>]
 let ``auto with mutually recursive types does not cause stack overflow using default settings`` () =
     Property.check <| property {
-        let! _ = GenX.auto<MutuallyRecursive1>
-        let! _ = GenX.auto<MutuallyRecursive2>
+        let! _ = GenX.auto<MutuallyRecursive1>()
+        let! _ = GenX.auto<MutuallyRecursive2>()
         return true
     }
 
