@@ -17,7 +17,8 @@ type AutoGenConfig =
       String : Gen<System.String>
       DateTime : Gen<System.DateTime>
       DateTimeOffset : Gen<System.DateTimeOffset>
-      SeqRange : Range<int> }
+      SeqRange : Range<int> 
+      RecursionDepth: int }
 
 module GenX =
     /// Shortcut for Gen.list (Range.exponential lower upper).
@@ -228,9 +229,21 @@ module GenX =
           String = Gen.string (Range.linear 0 50) Gen.latin1
           DateTime = Gen.dateTime
           DateTimeOffset = Gen.dateTime |> Gen.map System.DateTimeOffset
-          SeqRange = Range.exponential 0 50 }
+          SeqRange = Range.exponential 0 50
+          RecursionDepth = 1 }
 
-    let rec auto'<'a> (config : AutoGenConfig) : Gen<'a> =
+    let rec private auto''<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
+
+      let canRecurse (t: Type) =
+        match recursionDepths.TryFind t.AssemblyQualifiedName with
+        | Some x -> config.RecursionDepth > x
+        | None -> config.RecursionDepth > 0
+
+      let incrementRecursionDepth (t: Type) =
+        match recursionDepths.TryFind t.AssemblyQualifiedName with
+        | Some x -> recursionDepths.Add(t.AssemblyQualifiedName, x+1)
+        | None -> recursionDepths.Add(t.AssemblyQualifiedName, 1)
+
       let wrap (t : Gen<'b>) =
         unbox<Gen<'a>> t
   
@@ -238,7 +251,7 @@ module GenX =
         shape.Accept {
           new IWriteMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
             member __.Visit(shape : ShapeWriteMember<'DeclaringType, 'Field>) = 
-              let rf = auto'<'Field>(config)
+              let rf = auto''<'Field> config recursionDepths
               gen { let! f = rf
                     return fun dt -> shape.Inject dt f } }
 
@@ -265,13 +278,19 @@ module GenX =
         s.Accept {
           new IFSharpOptionVisitor<Gen<'a>> with
             member __.Visit<'a> () =
-              auto'<'a> config |> Gen.option |> wrap }
+              if canRecurse typeof<'a> then
+                auto''<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.option |> wrap
+              else
+                Gen.constant (None: 'a option) |> wrap}
 
       | Shape.Array s when s.Rank = 1 ->
         s.Accept { 
           new IArrayVisitor<Gen<'a>> with
             member __.Visit<'a> _ =
-              auto'<'a> config |> Gen.array config.SeqRange |> wrap }
+              if canRecurse typeof<'a> then
+                auto''<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap 
+              else
+                Gen.constant ([||]: 'a array) |> wrap}
 
       | Shape.Array _ ->
         raise (System.NotSupportedException("Can only generate arrays of rank 1"))
@@ -280,21 +299,24 @@ module GenX =
         s.Accept {
           new IFSharpListVisitor<Gen<'a>> with
             member __.Visit<'a> () =
-              auto'<'a> config |> Gen.list config.SeqRange |> wrap }
+              if canRecurse typeof<'a> then
+                auto''<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap 
+              else
+                Gen.constant ([]: 'a list) |> wrap}
 
       | Shape.FSharpSet s ->
         s.Accept {
           new IFSharpSetVisitor<Gen<'a>> with
             member __.Visit<'a when 'a : comparison> () =
-              auto'<'a list> config
+              auto''<'a list> config recursionDepths
               |> Gen.map Set.ofList 
-              |> wrap }
+              |> wrap}
 
       | Shape.FSharpMap s ->
         s.Accept {
           new IFSharpMapVisitor<Gen<'a>> with
             member __.Visit<'k, 'v when 'k : comparison> () = 
-              auto'<('k * 'v) list> config
+              auto''<('k * 'v) list> config recursionDepths
               |> Gen.map Map.ofList
               |> wrap }
 
@@ -361,10 +383,12 @@ module GenX =
           ctor.Accept {
             new IConstructorVisitor<'a, Gen<'a>> with
               member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-                let paramGen = auto'<'CtorParams> config
+                let paramGen = auto''<'CtorParams> config recursionDepths
                 gen { let! args = paramGen
                   return ctor.Invoke args } }
 
       | _ -> raise <| System.NotSupportedException ()
 
-    let auto<'a> () = auto'<'a> defaults
+    let auto<'a> () = auto''<'a> defaults Map.empty
+
+    let auto'<'a> config = auto''<'a> config Map.empty
