@@ -44,6 +44,32 @@ module GenX =
     let cString (lower : int) (upper : int) : (Gen<char> -> Gen<string>) =
         Gen.string (Range.constant lower upper)
 
+    /// Generates a string that is not equal to another string using
+    /// StringComparison.OrdinalIgnoreCase.
+    let iNotEqualTo (str : string) : (Gen<string> -> Gen<string>) =
+        filter <| fun s ->
+            not <| str.Equals(s, System.StringComparison.OrdinalIgnoreCase)
+
+    /// Generates a string that is not a substring of another string.
+    let notSubstringOf (str : string) : (Gen<string> -> Gen<string>) =
+      filter <| fun s -> not <| str.Contains s
+
+    /// Generates a string that is not a substring of another string using
+    /// StringComparison.OrdinalIgnoreCase.
+    let iNotSubstringOf (str : string) : (Gen<string> -> Gen<string>) =
+      filter <| fun s ->
+          str.IndexOf(s, System.StringComparison.OrdinalIgnoreCase) = -1
+
+    /// Generates a string that does not start with another string.
+    let notStartsWith (str : string) : (Gen<string> -> Gen<string>) =
+      filter <| fun s -> not <| s.StartsWith str
+
+    /// Generates a string that does not start with another string using
+    /// StringComparison.OrdinalIgnoreCase.
+    let iNotStartsWith (str : string) : (Gen<string> -> Gen<string>) =
+      filter <| fun s ->
+        not <| s.StartsWith(str, System.StringComparison.OrdinalIgnoreCase)
+
     /// Generates null part of the time.
     let withNull (g : Gen<'a>) : Gen<'a> =
         g |> Gen.option |> Gen.map (fun xOpt ->
