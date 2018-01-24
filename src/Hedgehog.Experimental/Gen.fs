@@ -232,7 +232,7 @@ module GenX =
           SeqRange = Range.exponential 0 50
           RecursionDepth = 1 }
 
-    let rec private auto''<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
+    let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
       let canRecurse (t: Type) =
         match recursionDepths.TryFind t.AssemblyQualifiedName with
@@ -251,7 +251,7 @@ module GenX =
         shape.Accept {
           new IWriteMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
             member __.Visit(shape : ShapeWriteMember<'DeclaringType, 'Field>) = 
-              let rf = auto''<'Field> config recursionDepths
+              let rf = autoInner<'Field> config recursionDepths
               gen { let! f = rf
                     return fun dt -> shape.Inject dt f } }
 
@@ -279,7 +279,7 @@ module GenX =
           new IFSharpOptionVisitor<Gen<'a>> with
             member __.Visit<'a> () =
               if canRecurse typeof<'a> then
-                auto''<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.option |> wrap
+                autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.option |> wrap
               else
                 Gen.constant (None: 'a option) |> wrap}
 
@@ -288,7 +288,7 @@ module GenX =
           new IArrayVisitor<Gen<'a>> with
             member __.Visit<'a> _ =
               if canRecurse typeof<'a> then
-                auto''<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap 
+                autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap 
               else
                 Gen.constant ([||]: 'a array) |> wrap}
 
@@ -300,7 +300,7 @@ module GenX =
           new IFSharpListVisitor<Gen<'a>> with
             member __.Visit<'a> () =
               if canRecurse typeof<'a> then
-                auto''<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap 
+                autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap 
               else
                 Gen.constant ([]: 'a list) |> wrap}
 
@@ -308,7 +308,7 @@ module GenX =
         s.Accept {
           new IFSharpSetVisitor<Gen<'a>> with
             member __.Visit<'a when 'a : comparison> () =
-              auto''<'a list> config recursionDepths
+              autoInner<'a list> config recursionDepths
               |> Gen.map Set.ofList 
               |> wrap}
 
@@ -316,7 +316,7 @@ module GenX =
         s.Accept {
           new IFSharpMapVisitor<Gen<'a>> with
             member __.Visit<'k, 'v when 'k : comparison> () = 
-              auto''<('k * 'v) list> config recursionDepths
+              autoInner<('k * 'v) list> config recursionDepths
               |> Gen.map Map.ofList
               |> wrap }
 
@@ -383,12 +383,12 @@ module GenX =
           ctor.Accept {
             new IConstructorVisitor<'a, Gen<'a>> with
               member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-                let paramGen = auto''<'CtorParams> config recursionDepths
+                let paramGen = autoInner<'CtorParams> config recursionDepths
                 gen { let! args = paramGen
                   return ctor.Invoke args } }
 
       | _ -> raise <| System.NotSupportedException ()
 
-    let auto<'a> () = auto''<'a> defaults Map.empty
+    let auto<'a> () = autoInner<'a> defaults Map.empty
 
-    let auto'<'a> config = auto''<'a> config Map.empty
+    let autoWith<'a> config = autoInner<'a> config Map.empty
