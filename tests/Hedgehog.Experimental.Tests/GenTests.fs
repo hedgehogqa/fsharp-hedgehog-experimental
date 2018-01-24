@@ -5,6 +5,43 @@ open Swensen.Unquote
 open Hedgehog
 
 [<Fact>]
+let ``shuffle does not add or remove elements`` () =
+    Property.check <| property {
+        let! xs =
+            Gen.int (Range.constantFrom 0 -100 100)
+            |> Gen.list (Range.linear 2 10)
+        let! shuffled = xs |> GenX.shuffle
+        test <@ List.sort xs = List.sort shuffled @>
+    }
+
+[<Fact>]
+let ``shuffle creates random permutations of the input list`` () =
+    Property.check' 1<tests> <| property {
+        let! xs =
+            Gen.int (Range.constantFrom 0 -100 100)
+            |> Gen.list (Range.singleton 10)
+            |> Gen.filter (fun l -> (List.distinct l).Length > 5)
+        let! permutations = xs |> GenX.shuffle |> Gen.list (Range.singleton 100)
+        test <@ permutations |> List.distinct |> List.length > 50 @>
+    }
+
+[<Fact>]
+let ``shuffleCase does not add, remove, or change the order of characters`` () =
+    Property.check <| property {
+        let! s = Gen.string (Range.linear 2 10) Gen.alpha
+        let! shuffled = s |> GenX.shuffleCase
+        test <@ shuffled.ToLowerInvariant() = s.ToLowerInvariant() @>
+    }
+
+[<Fact>]
+let ``shuffleCase creates random case permutations of the input string`` () =
+    Property.check' 1<tests> <| property {
+        let! xs = Gen.string (Range.linear 50 100) Gen.alpha
+        let! permutations = xs |> GenX.shuffleCase |> Gen.list (Range.singleton 100)
+        test <@ permutations |> List.distinct |> List.length > 50 @>
+    }
+
+[<Fact>]
 let ``iNotEqualTo does not generate a string equal to another string ignoring case`` () =
     Property.check <| property {
         let! s1 = Gen.string (Range.singleton 1) Gen.alpha
