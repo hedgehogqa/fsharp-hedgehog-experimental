@@ -5,6 +5,78 @@ open Swensen.Unquote
 open Hedgehog
 
 [<Fact>]
+let ``iNotEqualTo does not generate a string equal to another string ignoring case`` () =
+    Property.check <| property {
+        let! s1 = Gen.string (Range.singleton 1) Gen.alpha
+        let! s2 = Gen.string (Range.singleton 1) Gen.alpha |> GenX.iNotEqualTo s1
+        test <@ s1.ToLower() <> s2.ToLower() @>
+    }
+
+[<Fact>]
+let ``notSubstringOf does not generate a string that contains another string`` () =
+    Property.check <| property {
+        let! super = Gen.string (Range.singleton 3) Gen.alpha
+        let! sub = Gen.string (Range.singleton 1) Gen.alpha |> GenX.notSubstringOf super
+        test <@ not <| super.Contains sub @>
+    }
+
+[<Fact>]
+let ``iNotSubstringOf does not generate a string that contains another string ignoring case`` () =
+    Property.check <| property {
+        let! super = Gen.string (Range.singleton 3) Gen.alpha
+        let! sub = Gen.string (Range.singleton 1) Gen.alpha |> GenX.iNotSubstringOf super
+        test <@ super.ToLower().IndexOf(sub.ToLower()) = -1 @>
+    }
+
+[<Fact>]
+let ``notStartsWith does not generate a string that starts with another string`` () =
+    Property.check <| property {
+        let! sub = Gen.string (Range.singleton 1) Gen.alpha
+        let! super = Gen.string (Range.singleton 2) Gen.alpha |> GenX.notStartsWith sub
+        test <@ not <| super.StartsWith sub @>
+    }
+
+[<Fact>]
+let ``iNotStartsWith does not generate a string that starts with another string ignoring case`` () =
+    Property.check <| property {
+        let! sub = Gen.string (Range.singleton 1) Gen.alpha
+        let! super = Gen.string (Range.singleton 2) Gen.alpha |> GenX.iNotStartsWith sub
+        test <@ not <| super.ToLower().StartsWith (sub.ToLower()) @>
+    }
+
+[<Fact>]
+let ``withNull generates null some of the time`` () =
+    Property.check' 1<tests> <| property {
+        let! xs = Gen.constant "a" |> GenX.withNull |> Gen.list (Range.singleton 1000)
+        test <@ xs |> List.exists isNull @>
+    }
+
+[<Fact>]
+let ``noNull does not generate nulls`` () =
+    Property.check <| property {
+        let! x = Gen.constant "a" |> GenX.withNull |> GenX.noNull
+        test <@ not <| isNull x @>
+    }
+
+[<Fact>]
+let ``notEqualTo does not generate a value equal to another value`` () =
+    Property.check <| property {
+        let! x = Gen.int (Range.constant 1 5)
+        let! y = Gen.int (Range.constant 1 5) |> GenX.notEqualTo x
+        x <>! y
+    }
+
+[<Fact>]
+let ``notEqualToOpt does not generate a value equal to another option-wrapped value`` () =
+    Property.check <| property {
+        let! xOpt = Gen.int (Range.constant 1 5) |> Gen.option
+        let! y = Gen.int (Range.constant 1 5) |> GenX.notEqualToOpt xOpt
+        test <@ match xOpt with
+                | Some x -> x <> y
+                | None -> true @>
+    }
+
+[<Fact>]
 let ``notIn generates element that is not in list`` () =
     Property.check <| property {
         let! xs =
