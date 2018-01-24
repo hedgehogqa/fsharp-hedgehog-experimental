@@ -44,6 +44,29 @@ module GenX =
     let cString (lower : int) (upper : int) : (Gen<char> -> Gen<string>) =
         Gen.string (Range.constant lower upper)
 
+    /// Generates a permutation of the given list.
+    // "Inside-out" algorithm of Fisher-Yates shuffle from https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_%22inside-out%22_algorithm
+    let shuffle (xs: 'a list) =
+        gen {
+            let shuffled = Array.zeroCreate<'a>(xs.Length)
+            for i = 0 to xs.Length - 1 do
+                let! j = Gen.integral (Range.constant 0 i)
+                if i <> j then shuffled.[i] <- shuffled.[j]
+                shuffled.[j] <- xs.[i]
+            return shuffled |> Array.toList
+        }
+
+    /// Shuffles the case of the given string.
+    let shuffleCase (s: string) =
+        gen {
+          let sb = System.Text.StringBuilder()
+          for i = 0 to s.Length - 1 do
+              let! b = Gen.bool
+              let f = if b then Char.ToUpperInvariant else Char.ToLowerInvariant
+              sb.Append (f s.[i]) |> ignore
+          return sb.ToString()
+        }
+
     /// Generates a string that is not equal to another string using
     /// StringComparison.OrdinalIgnoreCase.
     let iNotEqualTo (str : string) : (Gen<string> -> Gen<string>) =
