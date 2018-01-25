@@ -412,6 +412,6 @@ module GenX =
 
       | _ -> raise <| System.NotSupportedException ()
 
-    let auto<'a> () = autoInner<'a> defaults Map.empty
+    let auto<'a> = autoInner<'a> defaults Map.empty
 
     let autoWith<'a> config = autoInner<'a> config Map.empty
