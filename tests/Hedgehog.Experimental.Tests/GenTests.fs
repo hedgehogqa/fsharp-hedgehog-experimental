@@ -292,3 +292,216 @@ let ``withDistinctMapTo guarantees that distinct input values map to distinct ou
         let xsDistinct = xs |> List.distinct
         xsDistinct |> List.map f |> List.distinct |> List.length =! xsDistinct.Length
     }
+
+
+type RecOption =
+  {X: RecOption option}
+  member this.Depth =
+    match this.X with
+    | None -> 0
+    | Some x -> x.Depth + 1
+
+[<Fact>]
+let ``auto with recursive option members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecOption>()
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive option members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecOption> {GenX.defaults with RecursionDepth = depth}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive option members generates some values with max recursion depth`` () =
+    Property.check' 10<tests> <| property {
+        let! depth = Gen.int <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecOption> {GenX.defaults with RecursionDepth = depth}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
+type RecArray =
+  {X: RecArray array}
+  member this.Depth =
+    match this.X with
+    | [||] -> 0
+    | xs -> xs |> Array.map (fun x -> x.Depth + 1) |> Array.max
+
+[<Fact>]
+let ``auto with recursive array members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecArray>()
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive array members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive array members generates some values with max recursion depth`` () =
+    Property.check' 10<tests> <| property {
+        let! depth = Gen.int <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
+type RecList =
+  {X: RecList list}
+  member this.Depth =
+    match this.X with
+    | [] -> 0
+    | xs -> xs |> List.map (fun x -> x.Depth + 1) |> List.max
+
+[<Fact>]
+let ``auto with recursive list members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecList>()
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive list members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecList> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive list members generates some values with max recursion depth`` () =
+    Property.check' 10<tests> <| property {
+        let! depth = Gen.int <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecList> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
+type RecSet =
+  {X: Set<RecSet>}
+  member this.Depth =
+    if this.X.IsEmpty then 0
+    else
+      this.X |> Seq.map (fun x -> x.Depth + 1) |> Seq.max
+
+[<Fact>]
+let ``auto with recursive set members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecSet>()
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive set members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecSet> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive set members generates some values with max recursion depth`` () =
+    Property.check' 10<tests> <| property {
+        let! depth = Gen.int <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecSet> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
+type RecMap =
+  {X: Map<RecMap, RecMap>}
+  member this.Depth =
+    if this.X.IsEmpty then 0
+    else
+      this.X |> Map.toSeq |> Seq.map (fun (k, v)  -> max (k.Depth + 1) (v.Depth + 1)) |> Seq.max
+
+[<Fact>]
+let ``auto with recursive map members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecMap>()
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive map members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecMap> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive map members generates some values with max recursion depth`` () =
+    Property.check' 10<tests> <| property {
+        let! depth = Gen.int <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecMap> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
+type MutuallyRecursive1 =
+  {X: MutuallyRecursive2 option}
+  member this.Depth =
+    match this.X with
+    | None -> 0
+    | Some {X = []} -> 0
+    | Some {X = mc1s} -> 
+        mc1s
+        |> List.map (fun mc1 -> mc1.Depth + 1)
+        |> List.max
+
+and MutuallyRecursive2 =
+  {X: MutuallyRecursive1 list}
+  member this.Depth =
+    if this.X.IsEmpty then 0
+    else
+      let depths = 
+        this.X
+        |> List.choose (fun mc1 -> mc1.X)
+        |> List.map (fun mc2 -> mc2.Depth + 1)
+      if depths.IsEmpty then 0 else List.max depths
+
+[<Fact>]
+let ``auto with mutually recursive types does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<MutuallyRecursive1>()
+        let! _ = GenX.auto<MutuallyRecursive2>()
+        return true
+    }
+
+[<Fact>]
+let ``auto with mutually recursive types respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int <| Range.exponential 0 5
+        let! x1 = GenX.autoWith<MutuallyRecursive1> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x2 = GenX.autoWith<MutuallyRecursive2> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x1.Depth <=! depth
+        x2.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with mutually recursive types generates some values with max recursion depth`` () =
+    Property.check' 10<tests> <| property {
+        let! depth = Gen.int <| Range.linear 1 5
+        let! xs1 = GenX.autoWith<MutuallyRecursive1> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        let! xs2 = GenX.autoWith<MutuallyRecursive2> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs1 |> List.exists (fun x -> x.Depth = depth) @>
+        test <@ xs2 |> List.exists (fun x -> x.Depth = depth) @>
+    }
