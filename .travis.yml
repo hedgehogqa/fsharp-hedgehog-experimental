@@ -1,0 +1,7 @@
+language: csharp
+solution: Hedgehog.Experimental.sln
+mono: none
+dotnet: 2.1.4
+
+script:
+- dotnet test Hedgehog.Experimental.Tests -c Release
