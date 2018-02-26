@@ -13,6 +13,10 @@
     <PackageTags>f# fsharp testing</PackageTags>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <DocumentationFile>$(TargetDir)\$(RootNameSpace).xml</DocumentationFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="Gen.fs" />
   </ItemGroup>
