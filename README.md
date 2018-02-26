@@ -15,7 +15,6 @@ fsharp-hedgehog-experimental [![NuGet][nuget-shield]][nuget] [![AppVeyor][appvey
 
 TODO
 
-More examples can be found in the [tutorial](doc/tutorial.md).
 
  [hedgehog]: https://github.com/hedgehogqa/fsharp-hedgehog
 
