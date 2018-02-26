@@ -1,13 +1,13 @@
 fsharp-hedgehog-experimental [![NuGet][nuget-shield]][nuget] [![AppVeyor][appveyor-shield]][appveyor]
 ========
 
-> [Hedgehog][hedgehog] with batteries included; auto-creation of DUs, POCOs, functions, extra combinators and more.
+> [Hedgehog][hedgehog] with batteries included: Auto-generators, extra combinators, and more.
 
 <img src="https://github.com/cmeeren/fsharp-hedgehog-experimental/raw/master/img/SQUARE_hedgehog_615x615.png" width="307" align="right"/>
 
 ## Features
 
-- Auto-generation or arbitrary types
+- Auto-generation of arbitrary types
 - Generation of functions
 - Lots of convenient combinators
 
