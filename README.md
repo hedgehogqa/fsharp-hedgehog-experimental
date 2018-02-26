@@ -171,7 +171,8 @@ let! chars, f = charListGen |> GenX.withDistinctMapTo intGen
 **Generate any type automatically using default auto-generators for primitive types:**
 
 ```f#
-// Can generate all F# types (unions, records, lists, etc.) as well as POCOs with mutable properties or constructors.
+// Can generate all F# types (unions, records, lists, etc.) as well as POCOs
+// with mutable properties or constructors.
 
 type Union =
   | Husband of int
