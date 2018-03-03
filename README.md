@@ -71,7 +71,7 @@ let! ex2 = strGen |> GenX.iNotEqualTo "A" // Case insensitive, does not generate
 let! ex3 = strGen |> GenX.notSubstringOf "fooBar" // Does not generate e.g. "Bar" (but "bar" is OK)
 let! ex4 = strGen |> GenX.iNotSubstringOf "fooBar" // Case insensitive, does not generate e.g. "Bar" or bar"
 let! ex5 = strGen |> GenX.notStartsWith "foo" // Does not generate e.g. "foobar" (but "Foobar" is OK)
-let! ex6 = strGen |> GenX.iNotStartsWith "foo" // Case insensitive, does not generate e.g. "foobar" or "Fooar"
+let! ex6 = strGen |> GenX.iNotStartsWith "foo" // Case insensitive, does not generate e.g. "foobar" or "Foobar"
 ```
 
 **Generate an item that is not in a specified list:**
@@ -191,7 +191,7 @@ type Recursive =
   {OptChild: Recursive option
    LstChild: Recursive list}
 let! recursive = GenX.auto<Recursive>
-// E.g. {OptChild = Some {OptChild = None; LstChild = []}; ListChild = []}
+// E.g. {OptChild = Some {OptChild = None; LstChild = []}; LstChild = []}
 // Note that you may need to adjust the defaults when any kind of sequence is involved
 // (see below), since by default the range for generated sequences are Range.exponential 0 50
 // (subject to change).
