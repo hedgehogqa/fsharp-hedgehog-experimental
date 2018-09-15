@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Hedgehog" Version="0.7.0" />
-    <PackageReference Include="TypeShape" Version="3.1.1" />
+    <PackageReference Include="Hedgehog" Version="0.8.2" />
+    <PackageReference Include="TypeShape" Version="5.1.0" />
   </ItemGroup>
 
 </Project>

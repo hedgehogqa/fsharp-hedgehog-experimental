@@ -1,7 +1,7 @@
 namespace Hedgehog
 
 open System
-open TypeShape
+open TypeShape.Core
 
 [<CLIMutable; Struct>]
 type AutoGenConfig =
