@@ -109,13 +109,6 @@ let noNullStrGen = nullStrGen |> GenX.noNull
 
 ```
 
-**Don't generate nulls:**
-
-```f#
-let nullGen = Gen.alpha |> GenX.eString 1 5 |> GenX.withNull  // Generates null some of the time
-let noNullGen = nullGen
-```
-
 **Generate sorted/distinct tuples (2, 3 or 4 elements):**
 
 ```f#
