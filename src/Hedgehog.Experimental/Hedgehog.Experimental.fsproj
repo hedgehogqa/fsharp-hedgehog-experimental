@@ -7,13 +7,12 @@
     <Version>0.1.1</Version>
     <PackageLicenseUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
-    <Company />
     <Description>Hedgehog with batteries included: Auto-generators, extra combinators, and more.</Description>
     <PackageIconUrl>https://raw.githubusercontent.com/cmeeren/fsharp-hedgehog-experimental/master/img/SQUARE_hedgehog_300x300.png</PackageIconUrl>
     <PackageTags>f# fsharp testing</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
-    <DocumentationFile>$(TargetDir)\$(RootNameSpace).xml</DocumentationFile>
     <PackageReleaseNotes>Updated to support TypeShape 5.1.0</PackageReleaseNotes>
   </PropertyGroup>
   <ItemGroup>
