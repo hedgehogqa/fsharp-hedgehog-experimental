@@ -288,8 +288,11 @@ module GenX =
       match TypeShape.Create<'a> () with
       | Shape.Byte -> wrap config.Byte
       | Shape.Int16 -> wrap config.Int16
+      | Shape.UInt16 -> wrap config.UInt16
       | Shape.Int32 -> wrap config.Int
+      | Shape.UInt32 -> wrap config.UInt32
       | Shape.Int64 -> wrap config.Int64
+      | Shape.UInt64 -> wrap config.UInt64
     
       | Shape.Double -> wrap config.Double
       | Shape.Decimal -> wrap config.Decimal
