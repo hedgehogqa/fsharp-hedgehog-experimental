@@ -505,10 +505,3 @@ let ``auto with mutually recursive types generates some values with max recursio
         test <@ xs1 |> List.exists (fun x -> x.Depth = depth) @>
         test <@ xs2 |> List.exists (fun x -> x.Depth = depth) @>
     }
-
-[<Fact>]
-let ``auto with UInt64 generates UInt64`` () =
-    Property.check <| property {
-        let! _ = GenX.auto<uint64>
-        return true
-    }
