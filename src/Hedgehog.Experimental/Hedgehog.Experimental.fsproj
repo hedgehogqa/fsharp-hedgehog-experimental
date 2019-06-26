@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Christer van der Meeren, Nikos Baxevanis, Jacob Stanley</Authors>
-    <Version>0.1.2</Version>
+    <Version>0.1.3</Version>
     <PackageLicenseUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
     <Description>Hedgehog with batteries included: Auto-generators, extra combinators, and more.</Description>
