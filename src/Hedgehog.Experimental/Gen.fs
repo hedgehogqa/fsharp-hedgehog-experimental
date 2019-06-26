@@ -7,8 +7,11 @@ open TypeShape.Core
 type AutoGenConfig =
     { Byte : Gen<byte>
       Int16 : Gen<int16>
+      UInt16 : Gen<uint16>
       Int : Gen<int>
+      UInt32 : Gen<uint32>
       Int64 : Gen<int64>
+      UInt64 : Gen<uint64>
       Double : Gen<double>
       Decimal : Gen<decimal>
       Bool : Gen<bool>
@@ -243,8 +246,11 @@ module GenX =
     let defaults =
         { Byte = Gen.byte <| Range.exponentialBounded ()
           Int16 = Gen.int16 <| Range.exponentialBounded ()
+          UInt16 = Gen.uint16 <| Range.exponentialBounded ()
           Int = Gen.int <| Range.exponentialBounded ()
+          UInt32 = Gen.uint32 <| Range.exponentialBounded ()
           Int64 = Gen.int64 <| Range.exponentialBounded ()
+          UInt64 = Gen.uint64 <| Range.exponentialBounded ()
           Double = Gen.double <| Range.exponentialBounded ()
           Decimal = Gen.double <| Range.exponentialBounded () |> Gen.map decimal
           Bool = Gen.bool
