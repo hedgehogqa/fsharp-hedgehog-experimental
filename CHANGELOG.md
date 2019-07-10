@@ -1,8 +1,8 @@
 # Changelog
 
-### vNext
+### 0.1.4 (2019-07-10)
 
-* Changes to be published in the next release will be listed here
+* Updated GenX.auto to support uint16, uint32, and uint64
 
 ### 0.1.1 (2018-09-15)
 

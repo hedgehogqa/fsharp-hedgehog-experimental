@@ -2,7 +2,7 @@ source https://api.nuget.org/v3/index.json
 framework: auto-detect
 
 nuget FSharp.Core redirects: force, lowest_matching: true
-nuget Hedgehog >= 0.8.2
+nuget Hedgehog >= 0.8.3
 nuget TypeShape ~> 5.1.0
 
 group Test
