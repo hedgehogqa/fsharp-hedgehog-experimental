@@ -202,8 +202,11 @@ The current defaults are (see Gen.fs for up-to-date list):
 let defaults =
   { Byte = Gen.byte <| Range.exponentialBounded ()
     Int16 = Gen.int16 <| Range.exponentialBounded ()
+    UInt16 = Gen.uint16 <| Range.exponentialBounded ()
     Int = Gen.int <| Range.exponentialBounded ()
+    UInt32 = Gen.uint32 <| Range.exponentialBounded ()
     Int64 = Gen.int64 <| Range.exponentialBounded ()
+    UInt64 = Gen.uint64 <| Range.exponentialBounded ()
     Double = Gen.double <| Range.exponentialBounded ()
     Decimal = Gen.double <| Range.exponentialBounded () |> Gen.map decimal
     Bool = Gen.bool
@@ -212,6 +215,7 @@ let defaults =
     String = Gen.string (Range.linear 0 50) Gen.latin1
     DateTime = Gen.dateTime
     DateTimeOffset = Gen.dateTime |> Gen.map System.DateTimeOffset
+    Uri = uri  // custom generator in this library
     SeqRange = Range.exponential 0 50
     RecursionDepth = 1 }
 ```

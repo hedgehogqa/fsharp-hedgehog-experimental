@@ -5,6 +5,13 @@ open Swensen.Unquote
 open Hedgehog
 
 [<Fact>]
+let ``uri generates valid URIs`` () =
+    Property.check' 10000<tests> <| property {
+        let! uri = GenX.uri
+        ignore uri
+    }
+
+[<Fact>]
 let ``shuffle does not add or remove elements`` () =
     Property.check <| property {
         let! xs =
@@ -511,4 +518,11 @@ let ``auto with UInt64 generates UInt64`` () =
     Property.check <| property {
         let! _ = GenX.auto<uint64>
         return true
+    }
+
+[<Fact>]
+let ``auto can generate valid URIs`` () =
+    Property.check <| property {
+        let! uri = GenX.auto<System.Uri>
+        ignore uri
     }

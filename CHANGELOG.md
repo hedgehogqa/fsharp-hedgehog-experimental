@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.1.5 (2019-08-09)
+
+* Added GenX.uri and added URI support to GenX.auto
+
 ### 0.1.4 (2019-07-10)
 
 * Updated GenX.auto to support uint16, uint32, and uint64

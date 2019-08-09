@@ -4,13 +4,13 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Christer van der Meeren, Nikos Baxevanis, Jacob Stanley</Authors>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <PackageLicenseUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
     <Description>Hedgehog with batteries included: Auto-generators, extra combinators, and more.</Description>
     <PackageIconUrl>https://raw.githubusercontent.com/cmeeren/fsharp-hedgehog-experimental/master/img/SQUARE_hedgehog_300x300.png</PackageIconUrl>
     <PackageTags>f# fsharp testing</PackageTags>
-    <PackageReleaseNotes>Updated GenX.auto to support uint16, uint32, and uint64</PackageReleaseNotes>
+    <PackageReleaseNotes>Added GenX.uri and added URI support to GenX.auto</PackageReleaseNotes>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>

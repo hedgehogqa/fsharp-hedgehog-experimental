@@ -20,10 +20,51 @@ type AutoGenConfig =
       String : Gen<System.String>
       DateTime : Gen<System.DateTime>
       DateTimeOffset : Gen<System.DateTimeOffset>
+      Uri : Gen<Uri>
       SeqRange : Range<int> 
       RecursionDepth: int }
 
 module GenX =
+
+    /// Generates a random URI.
+    let uri = gen {
+      let! protocol =
+        Gen.string (Range.linear 1 10) Gen.alpha
+        |> Gen.map (fun p -> p + ":")
+      let domainGen =
+        Gen.string (Range.linear 1 5) Gen.alpha
+        |> Gen.list (Range.linear 2 5)
+        |> Gen.map (String.concat ".")
+      let ipGen =
+        Gen.int (Range.linear 0 255)
+        |> Gen.list (Range.constant 4 4)
+        |> Gen.map (List.map string >> String.concat ".")
+      let! domainOrIp = Gen.choice [domainGen; ipGen]
+      let! port =
+        Gen.int (Range.constant 1 65535)
+        |> Gen.map (fun i -> ":" + string i)
+        |> Gen.option
+        |> Gen.map (Option.defaultValue "")
+      let! path =
+        Gen.string (Range.exponential 1 10) Gen.alphaNum
+        |> Gen.list (Range.linear 0 5)
+        |> Gen.map (String.concat "/")
+      let! queryParams =
+        Gen.string (Range.exponential 1 10) Gen.alphaNum
+        |> Gen.tuple
+        |> Gen.list (Range.linear 0 5)
+        |> Gen.map (
+            List.map (fun (k, v) -> k + "=" + v)
+            >> String.concat "&"
+        )
+        |> Gen.map (fun s -> if s = "" then s else "?" + s)
+      let! anchor =
+        Gen.string (Range.exponential 1 10) Gen.alphaNum
+        |> Gen.map (fun s -> "#" + s)
+        |> Gen.option
+        |> Gen.map (Option.defaultValue "")
+      return Uri(protocol + "//" + domainOrIp + port + "/" + path + queryParams + anchor)
+    }
 
     /// Shortcut for Gen.list (Range.exponential lower upper).
     let eList (lower : int) (upper : int) : (Gen<'a> -> Gen<List<'a>>) =
@@ -259,6 +300,7 @@ module GenX =
           String = Gen.string (Range.linear 0 50) Gen.latin1
           DateTime = Gen.dateTime
           DateTimeOffset = Gen.dateTime |> Gen.map System.DateTimeOffset
+          Uri = uri
           SeqRange = Range.exponential 0 50
           RecursionDepth = 1 }
 
@@ -301,6 +343,7 @@ module GenX =
       | Shape.Guid -> wrap config.Guid
       | Shape.Char -> wrap config.Char
       | Shape.DateTime -> wrap config.DateTime
+      | Shape.Uri -> wrap config.Uri
 
       | Shape.Unit -> wrap <| Gen.constant ()
 
