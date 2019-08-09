@@ -319,13 +319,13 @@ module GenX =
       let wrap (t : Gen<'b>) =
         unbox<Gen<'a>> t
   
-      let mkRandomMember (shape : IShapeWriteMember<'DeclaringType>) = 
+      let mkRandomMember (shape : IShapeMember<'DeclaringType>) = 
         shape.Accept {
-          new IWriteMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
-            member __.Visit(shape : ShapeWriteMember<'DeclaringType, 'Field>) = 
+          new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
+            member __.Visit(shape : ShapeMember<'DeclaringType, 'Field>) = 
               let rf = autoInner<'Field> config recursionDepths
               gen { let! f = rf
-                    return fun dt -> shape.Inject dt f } }
+                    return fun dt -> shape.Set dt f } }
 
       match TypeShape.Create<'a> () with
       | Shape.Byte -> wrap config.Byte
@@ -351,8 +351,8 @@ module GenX =
       | Shape.DateTimeOffset -> wrap config.DateTimeOffset
 
       | Shape.FSharpOption s ->
-        s.Accept {
-          new IFSharpOptionVisitor<Gen<'a>> with
+        s.Element.Accept {
+          new ITypeVisitor<Gen<'a>> with
             member __.Visit<'a> () =
               if canRecurse typeof<'a> then
                 autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.option |> wrap
@@ -360,9 +360,9 @@ module GenX =
                 Gen.constant (None: 'a option) |> wrap}
 
       | Shape.Array s when s.Rank = 1 ->
-        s.Accept { 
-          new IArrayVisitor<Gen<'a>> with
-            member __.Visit<'a> _ =
+        s.Element.Accept { 
+          new ITypeVisitor<Gen<'a>> with
+            member __.Visit<'a> () =
               if canRecurse typeof<'a> then
                 autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap 
               else
@@ -372,8 +372,8 @@ module GenX =
         raise (System.NotSupportedException("Can only generate arrays of rank 1"))
 
       | Shape.FSharpList s ->
-        s.Accept {
-          new IFSharpListVisitor<Gen<'a>> with
+        s.Element.Accept {
+          new ITypeVisitor<Gen<'a>> with
             member __.Visit<'a> () =
               if canRecurse typeof<'a> then
                 autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap 
