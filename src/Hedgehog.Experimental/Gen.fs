@@ -21,7 +21,7 @@ type AutoGenConfig =
       DateTime : Gen<System.DateTime>
       DateTimeOffset : Gen<System.DateTimeOffset>
       Uri : Gen<Uri>
-      SeqRange : Range<int> 
+      SeqRange : Range<int>
       RecursionDepth: int }
 
 module GenX =
@@ -318,11 +318,11 @@ module GenX =
 
       let wrap (t : Gen<'b>) =
         unbox<Gen<'a>> t
-  
-      let mkRandomMember (shape : IShapeMember<'DeclaringType>) = 
+
+      let mkRandomMember (shape : IShapeMember<'DeclaringType>) =
         shape.Accept {
           new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
-            member __.Visit(shape : ShapeMember<'DeclaringType, 'Field>) = 
+            member __.Visit(shape : ShapeMember<'DeclaringType, 'Field>) =
               let rf = autoInner<'Field> config recursionDepths
               gen { let! f = rf
                     return fun dt -> shape.Set dt f } }
@@ -335,10 +335,10 @@ module GenX =
       | Shape.UInt32 -> wrap config.UInt32
       | Shape.Int64 -> wrap config.Int64
       | Shape.UInt64 -> wrap config.UInt64
-    
+
       | Shape.Double -> wrap config.Double
       | Shape.Decimal -> wrap config.Decimal
-    
+
       | Shape.Bool -> wrap config.Bool
       | Shape.Guid -> wrap config.Guid
       | Shape.Char -> wrap config.Char
@@ -360,11 +360,11 @@ module GenX =
                 Gen.constant (None: 'a option) |> wrap}
 
       | Shape.Array s when s.Rank = 1 ->
-        s.Element.Accept { 
+        s.Element.Accept {
           new ITypeVisitor<Gen<'a>> with
             member __.Visit<'a> () =
               if canRecurse typeof<'a> then
-                autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap 
+                autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap
               else
                 Gen.constant ([||]: 'a array) |> wrap}
 
@@ -376,7 +376,7 @@ module GenX =
           new ITypeVisitor<Gen<'a>> with
             member __.Visit<'a> () =
               if canRecurse typeof<'a> then
-                autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap 
+                autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap
               else
                 Gen.constant ([]: 'a list) |> wrap}
 
@@ -385,13 +385,13 @@ module GenX =
           new IFSharpSetVisitor<Gen<'a>> with
             member __.Visit<'a when 'a : comparison> () =
               autoInner<'a list> config recursionDepths
-              |> Gen.map Set.ofList 
+              |> Gen.map Set.ofList
               |> wrap}
 
       | Shape.FSharpMap s ->
         s.Accept {
           new IFSharpMapVisitor<Gen<'a>> with
-            member __.Visit<'k, 'v when 'k : comparison> () = 
+            member __.Visit<'k, 'v when 'k : comparison> () =
               autoInner<('k * 'v) list> config recursionDepths
               |> Gen.map Map.ofList
               |> wrap }
@@ -401,7 +401,7 @@ module GenX =
           shape.Elements
           |> Array.map mkRandomMember
 
-        gen { 
+        gen {
           let mutable target = shape.CreateUninitialized ()
           for eg in eGens do
             let! u = eg
@@ -414,7 +414,7 @@ module GenX =
           shape.Fields
           |> Array.map mkRandomMember
 
-        gen { 
+        gen {
           let mutable target = shape.CreateUninitialized ()
           for eg in fieldGen do
             let! u = eg
@@ -427,7 +427,7 @@ module GenX =
           shape.UnionCases
           |> Array.map (fun uc -> uc.Fields |> Array.map mkRandomMember)
 
-        gen { 
+        gen {
           let! tag = Gen.integral <| Range.constant 0 (caseFieldGen.Length - 1)
           let mutable u = shape.UnionCases.[tag].CreateUninitialized ()
           for f in caseFieldGen.[tag] do
@@ -438,7 +438,7 @@ module GenX =
 
       | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
         let propGen = shape.Properties |> Array.map mkRandomMember
-        gen { 
+        gen {
           let mutable target = shape.CreateUninitialized ()
           for ep in propGen do
             let! up = ep
@@ -447,7 +447,7 @@ module GenX =
         }
 
       | Shape.Poco (:? ShapePoco<'a> as shape) ->
-        let bestCtor = 
+        let bestCtor =
           shape.Constructors
           |> Seq.filter  (fun c -> c.IsPublic)
           |> Seq.sortBy  (fun c -> c.Arity)
@@ -455,7 +455,7 @@ module GenX =
 
         match bestCtor with
         | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'a>
-        | Some ctor -> 
+        | Some ctor ->
           ctor.Accept {
             new IConstructorVisitor<'a, Gen<'a>> with
               member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =

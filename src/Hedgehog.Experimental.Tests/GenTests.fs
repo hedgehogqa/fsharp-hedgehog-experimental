@@ -145,7 +145,7 @@ let ``notContains generates list that does not contain element`` () =
 let ``addElement generates a list with the specified element`` () =
     Property.check <| property {
         let! x = Gen.int (Range.exponentialBounded ())
-        let! xs = 
+        let! xs =
             Gen.int (Range.exponentialBounded ())
             |> Gen.list (Range.linear 0 10)
             |> GenX.addElement x
@@ -272,9 +272,9 @@ let ``dateInterval with negative interval generates increasing dates`` () =
 [<Fact>]
 let ``withMapTo is defined for all elements in input list`` () =
     Property.check <| property {
-        let! xs, f = 
+        let! xs, f =
             Gen.int (Range.exponentialBounded ())
-            |> Gen.list (Range.linear 1 50) 
+            |> Gen.list (Range.linear 1 50)
             |> GenX.withMapTo Gen.alphaNum
         xs |> List.map f |> ignore // Should not throw.
     }
@@ -282,9 +282,9 @@ let ``withMapTo is defined for all elements in input list`` () =
 [<Fact>]
 let ``withDistinctMapTo is defined for all elements in input list`` () =
     Property.check <| property {
-        let! xs, f = 
+        let! xs, f =
             Gen.int (Range.exponentialBounded ())
-            |> Gen.list (Range.linear 1 50) 
+            |> Gen.list (Range.linear 1 50)
             |> GenX.withDistinctMapTo Gen.alphaNum
         xs |> List.map f |> ignore // Should not throw.
     }
@@ -292,9 +292,9 @@ let ``withDistinctMapTo is defined for all elements in input list`` () =
 [<Fact>]
 let ``withDistinctMapTo guarantees that distinct input values map to distinct output values`` () =
     Property.check <| property {
-        let! xs, f = 
+        let! xs, f =
             Gen.int (Range.exponentialBounded ())
-            |> Gen.list (Range.linear 1 50) 
+            |> Gen.list (Range.linear 1 50)
             |> GenX.withDistinctMapTo Gen.alphaNum
         let xsDistinct = xs |> List.distinct
         xsDistinct |> List.map f |> List.distinct |> List.length =! xsDistinct.Length
@@ -467,7 +467,7 @@ type MutuallyRecursive1 =
     match this.X with
     | None -> 0
     | Some {X = []} -> 0
-    | Some {X = mc1s} -> 
+    | Some {X = mc1s} ->
         mc1s
         |> List.map (fun mc1 -> mc1.Depth + 1)
         |> List.max
@@ -477,7 +477,7 @@ and MutuallyRecursive2 =
   member this.Depth =
     if this.X.IsEmpty then 0
     else
-      let depths = 
+      let depths =
         this.X
         |> List.choose (fun mc1 -> mc1.X)
         |> List.map (fun mc2 -> mc2.Depth + 1)
