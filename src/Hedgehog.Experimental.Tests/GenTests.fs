@@ -526,3 +526,20 @@ let ``auto can generate valid URIs`` () =
         let! uri = GenX.auto<System.Uri>
         ignore uri
     }
+
+
+type Enum =
+  | A = 1
+  | B = 2
+
+
+[<Fact>]
+let ``auto can generate enums`` () =
+    Property.check' 1<tests> <| property {
+        let! enums =
+          GenX.auto<Enum>
+          |> GenX.cList 1000 1000
+        test <@ enums |> List.contains Enum.A @>
+        test <@ enums |> List.contains Enum.B @>
+        test <@ enums |> List.forall (fun e -> e = Enum.A || e = Enum.B) @>
+    }

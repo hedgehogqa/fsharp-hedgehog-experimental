@@ -436,6 +436,13 @@ module GenX =
           return u
         }
 
+      | Shape.Enum _ ->
+        let values = Enum.GetValues(typeof<'a>)
+        gen {
+          let! index = Gen.integral <| Range.constant 0 (values.Length - 1)
+          return values.GetValue index |> unbox
+        }
+
       | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
         let propGen = shape.Properties |> Array.map mkRandomMember
         gen {
