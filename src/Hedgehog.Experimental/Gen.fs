@@ -15,11 +15,11 @@ type AutoGenConfig =
       Double : Gen<double>
       Decimal : Gen<decimal>
       Bool : Gen<bool>
-      Guid : Gen<System.Guid>
-      Char : Gen<System.Char>
-      String : Gen<System.String>
-      DateTime : Gen<System.DateTime>
-      DateTimeOffset : Gen<System.DateTimeOffset>
+      Guid : Gen<Guid>
+      Char : Gen<Char>
+      String : Gen<String>
+      DateTime : Gen<DateTime>
+      DateTimeOffset : Gen<DateTimeOffset>
       Uri : Gen<Uri>
       SeqRange : Range<int>
       RecursionDepth: int }
@@ -105,7 +105,7 @@ module GenX =
     /// Shuffles the case of the given string.
     let shuffleCase (s: string) =
         gen {
-          let sb = System.Text.StringBuilder()
+          let sb = Text.StringBuilder()
           for i = 0 to s.Length - 1 do
               let! b = Gen.bool
               let f = if b then Char.ToUpperInvariant else Char.ToLowerInvariant
@@ -117,7 +117,7 @@ module GenX =
     /// StringComparison.OrdinalIgnoreCase.
     let iNotEqualTo (str : string) : (Gen<string> -> Gen<string>) =
         Gen.filter <| fun s ->
-            not <| str.Equals(s, System.StringComparison.OrdinalIgnoreCase)
+            not <| str.Equals(s, StringComparison.OrdinalIgnoreCase)
 
     /// Generates a string that is not a substring of another string.
     let notSubstringOf (str : string) : (Gen<string> -> Gen<string>) =
@@ -127,7 +127,7 @@ module GenX =
     /// StringComparison.OrdinalIgnoreCase.
     let iNotSubstringOf (str : string) : (Gen<string> -> Gen<string>) =
       Gen.filter <| fun s ->
-          str.IndexOf(s, System.StringComparison.OrdinalIgnoreCase) = -1
+          str.IndexOf(s, StringComparison.OrdinalIgnoreCase) = -1
 
     /// Generates a string that does not start with another string.
     let notStartsWith (str : string) : (Gen<string> -> Gen<string>) =
@@ -137,7 +137,7 @@ module GenX =
     /// StringComparison.OrdinalIgnoreCase.
     let iNotStartsWith (str : string) : (Gen<string> -> Gen<string>) =
       Gen.filter <| fun s ->
-        not <| s.StartsWith(str, System.StringComparison.OrdinalIgnoreCase)
+        not <| s.StartsWith(str, StringComparison.OrdinalIgnoreCase)
 
     /// Generates null part of the time.
     let withNull (g : Gen<'a>) : Gen<'a> =
@@ -299,7 +299,7 @@ module GenX =
           Char = Gen.latin1
           String = Gen.string (Range.linear 0 50) Gen.latin1
           DateTime = Gen.dateTime
-          DateTimeOffset = Gen.dateTime |> Gen.map System.DateTimeOffset
+          DateTimeOffset = Gen.dateTime |> Gen.map DateTimeOffset
           Uri = uri
           SeqRange = Range.exponential 0 50
           RecursionDepth = 1 }
@@ -369,7 +369,7 @@ module GenX =
                 Gen.constant ([||]: 'a array) |> wrap}
 
       | Shape.Array _ ->
-        raise (System.NotSupportedException("Can only generate arrays of rank 1"))
+        raise (NotSupportedException("Can only generate arrays of rank 1"))
 
       | Shape.FSharpList s ->
         s.Element.Accept {
@@ -470,7 +470,7 @@ module GenX =
                 gen { let! args = paramGen
                   return ctor.Invoke args } }
 
-      | _ -> raise <| System.NotSupportedException ()
+      | _ -> raise <| NotSupportedException ()
 
     let auto<'a> = autoInner<'a> defaults Map.empty
 
