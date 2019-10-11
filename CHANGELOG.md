@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.1 (2019-10-11)
+
+* Improved URI generation
+
 ### 0.2.0 (2019-09-26)
 
 * Added enum support to GenX.auto
