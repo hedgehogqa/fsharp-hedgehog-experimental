@@ -90,7 +90,7 @@ module GenX =
 
 
   let private uriPath =
-    Gen.string (Range.exponential 1 10) Gen.alphaNum
+    Gen.string (Range.exponential 0 10) Gen.alphaNum
     |> Gen.list (Range.linear 0 5)
     |> Gen.map (String.concat "/")
 

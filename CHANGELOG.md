@@ -1,6 +1,6 @@
 # Changelog
 
-### 0.2.1 (2019-10-11)
+### 0.2.2 (2019-10-11)
 
 * Improved URI generation
 
