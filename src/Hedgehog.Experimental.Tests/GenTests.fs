@@ -522,7 +522,7 @@ let ``auto with UInt64 generates UInt64`` () =
 
 [<Fact>]
 let ``auto can generate valid URIs`` () =
-    Property.check <| property {
+    Property.check' 10000<tests> <| property {
         let! uri = GenX.auto<System.Uri>
         ignore uri
     }

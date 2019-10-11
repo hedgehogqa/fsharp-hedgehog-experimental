@@ -27,44 +27,98 @@ type AutoGenConfig = {
 
 module GenX =
 
-  /// Generates a random URI.
-  let uri = gen {
-    let! protocol =
-      Gen.string (Range.linear 1 10) Gen.alpha
-      |> Gen.map (fun p -> p + ":")
+  let private uriSchemeNonFirst = Gen.item (['a' .. 'z'] @ ['+'; '.'; '-'])
+
+  let private uriScheme = gen {
+    let! first = Gen.lower |> Gen.map string
+    // It seems that length must be at least 2, becuase otherwise we might get
+    // an implicit file:// scheme with the generated scheme as part of the path.
+    let! rest = Gen.string (Range.linear 1 9) uriSchemeNonFirst
+    return first + rest + ":"
+  }
+
+
+  let private uriUserInfo = gen {
+    let! username = Gen.string (Range.linear 1 10) Gen.alphaNum
+    let! password =
+      Gen.frequency [
+        5, Gen.constant None
+        1, Gen.string (Range.linear 0 10) Gen.alphaNum |> Gen.map Some
+      ]
+    match password with
+    | None -> return username + "@"
+    | Some pwd -> return username + ":" + pwd + "@"
+  }
+
+
+  let private uriHost = gen {
     let domainGen =
       Gen.string (Range.linear 1 5) Gen.alpha
-      |> Gen.list (Range.linear 2 5)
+      |> Gen.list (Range.linear 1 5)
       |> Gen.map (String.concat ".")
-    let ipGen =
+    let ipv4Gen =
       Gen.int (Range.linear 0 255)
       |> Gen.list (Range.constant 4 4)
       |> Gen.map (List.map string >> String.concat ".")
-    let! domainOrIp = Gen.choice [domainGen; ipGen]
+    return!
+      Gen.frequency [
+        3, domainGen
+        1, ipv4Gen
+      ]
+  }
+
+
+  let private uriPort =
+    Gen.int (Range.constant 1 65535)
+    |> Gen.map (fun i -> ":" + string i)
+
+
+  let private uriAuthority = gen {
+    let! userinfo =
+      Gen.frequency [
+        3, Gen.constant None
+        1, uriUserInfo |> Gen.map Some
+      ]
+    let! host = uriHost
     let! port =
-      Gen.int (Range.constant 1 65535)
-      |> Gen.map (fun i -> ":" + string i)
-      |> Gen.option
-      |> Gen.map (Option.defaultValue "")
-    let! path =
-      Gen.string (Range.exponential 1 10) Gen.alphaNum
-      |> Gen.list (Range.linear 0 5)
-      |> Gen.map (String.concat "/")
-    let! queryParams =
-      Gen.string (Range.exponential 1 10) Gen.alphaNum
-      |> Gen.tuple
-      |> Gen.list (Range.linear 0 5)
-      |> Gen.map (
-          List.map (fun (k, v) -> k + "=" + v)
-          >> String.concat "&"
-      )
-      |> Gen.map (fun s -> if s = "" then s else "?" + s)
-    let! anchor =
-      Gen.string (Range.exponential 1 10) Gen.alphaNum
-      |> Gen.map (fun s -> "#" + s)
-      |> Gen.option
-      |> Gen.map (Option.defaultValue "")
-    return Uri(protocol + "//" + domainOrIp + port + "/" + path + queryParams + anchor)
+      Gen.frequency [
+        3, Gen.constant None
+        1, uriPort |> Gen.map Some
+      ]
+    return "//" + (userinfo |> Option.defaultValue "") + host + (port |> Option.defaultValue "")
+  }
+
+
+  let private uriPath =
+    Gen.string (Range.exponential 1 10) Gen.alphaNum
+    |> Gen.list (Range.linear 0 5)
+    |> Gen.map (String.concat "/")
+
+
+  let private uriQuery =
+    Gen.string (Range.exponential 1 10) Gen.alphaNum
+    |> Gen.tuple
+    |> Gen.list (Range.linear 1 5)
+    |> Gen.map (
+        List.map (fun (k, v) -> k + "=" + v)
+        >> String.concat "&"
+    )
+    |> Gen.map (fun s -> "?" + s)
+
+
+  let private uriFragment =
+    Gen.string (Range.exponential 1 10) Gen.alphaNum
+    |> Gen.map (fun s -> "#" + s)
+
+  /// Generates a random URI.
+  let uri = gen {
+    let! scheme = uriScheme
+    let! authority = uriAuthority
+    let! path = uriPath
+    let! query = uriQuery |> Gen.option
+    let! fragment = uriFragment |> Gen.option
+    let path = if path = "" then path else "/" + path
+    return Uri(scheme + authority + path + (query |> Option.defaultValue "") + (fragment |> Option.defaultValue ""))
   }
 
   /// Shortcut for Gen.list (Range.exponential lower upper).
