@@ -220,6 +220,19 @@ let defaults =
     RecursionDepth = 1 }
 ```
 
+Deployment checklist
+--------------------
+
+For maintainers.
+
+- Make necessary changes to the code
+- Update the changelog
+- Update the version and release notes in the fsproj file (incrementing the version on `master` is what triggers the deployment to NuGet)
+- Commit and push
+
+
+Each commit to `master`
+
 [hedgehog]: https://github.com/hedgehogqa/fsharp-hedgehog
 
 [nuget]: https://www.nuget.org/packages/Hedgehog.Experimental/
