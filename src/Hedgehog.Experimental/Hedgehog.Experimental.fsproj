@@ -3,18 +3,25 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>Christer van der Meeren, Nikos Baxevanis, Jacob Stanley</Authors>
-    <Version>0.2.3</Version>
-    <PackageLicenseUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
-    <Description>Hedgehog with batteries included: Auto-generators, extra combinators, and more.</Description>
-    <PackageIconUrl>https://raw.githubusercontent.com/cmeeren/fsharp-hedgehog-experimental/master/img/SQUARE_hedgehog_300x300.png</PackageIconUrl>
-    <PackageTags>f# fsharp testing</PackageTags>
-    <PackageReleaseNotes>Updated dependencies</PackageReleaseNotes>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <DebugType>Embedded</DebugType>
+    <EmbedAllSources>True</EmbedAllSources>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Description>Hedgehog with batteries included: Auto-generators, extra combinators, and more.</Description>
+    <Authors>Christer van der Meeren, Nikos Baxevanis, Jacob Stanley</Authors>
+    <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
+    <PackageTags>f# fsharp testing</PackageTags>
+    <PackageIcon>SQUARE_hedgehog_128x128.png</PackageIcon>
+    <Version>0.2.3</Version>
+    <PackageReleaseNotes>Updated dependencies</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="SQUARE_hedgehog_128x128.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
     <Compile Include="Gen.fs" />
   </ItemGroup>
 
