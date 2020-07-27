@@ -4,13 +4,13 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Christer van der Meeren, Nikos Baxevanis, Jacob Stanley</Authors>
-    <Version>0.2.2</Version>
+    <Version>0.2.3</Version>
     <PackageLicenseUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
     <Description>Hedgehog with batteries included: Auto-generators, extra combinators, and more.</Description>
     <PackageIconUrl>https://raw.githubusercontent.com/cmeeren/fsharp-hedgehog-experimental/master/img/SQUARE_hedgehog_300x300.png</PackageIconUrl>
     <PackageTags>f# fsharp testing</PackageTags>
-    <PackageReleaseNotes>Improved URI generation</PackageReleaseNotes>
+    <PackageReleaseNotes>Updated dependencies</PackageReleaseNotes>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Hedgehog" Version="0.8.3" />
-    <PackageReference Include="TypeShape" Version="7.1.0" />
+    <PackageReference Include="Hedgehog" Version="0.8.4" />
+    <PackageReference Include="TypeShape" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>

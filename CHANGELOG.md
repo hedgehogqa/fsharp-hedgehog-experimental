@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.3 (2020-07-27)
+
+* Updated dependencies
+
 ### 0.2.2 (2019-10-11)
 
 * Improved URI generation
