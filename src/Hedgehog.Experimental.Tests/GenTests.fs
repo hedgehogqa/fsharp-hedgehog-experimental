@@ -90,10 +90,10 @@ let ``iNotStartsWith does not generate a string that starts with another string 
 
 [<Fact>]
 let ``withNull generates null some of the time`` () =
-    Property.check' 1<tests> <| property {
-        let! xs = Gen.constant "a" |> GenX.withNull |> Gen.list (Range.singleton 1000)
-        test <@ xs |> List.exists isNull @>
-    }
+    Gen.constant "a"
+    |> GenX.withNull
+    |> Gen.sample 0 1000
+    |> Seq.exists isNull
 
 [<Fact>]
 let ``noNull does not generate nulls`` () =
