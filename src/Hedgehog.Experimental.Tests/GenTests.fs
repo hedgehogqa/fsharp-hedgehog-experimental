@@ -1,5 +1,6 @@
 module Hedgehog.Experimental.Tests.GenTests
 
+open System
 open Xunit
 open Swensen.Unquote
 open Hedgehog
@@ -546,8 +547,120 @@ let ``auto can generate enums`` () =
 
 
 [<Fact>]
+let ``auto can generate byte`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<byte>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate int16`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<int16>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate uint16`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<uint16>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate int`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<int>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate uint32`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<uint32>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate int64`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<int64>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate uint64`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<uint64>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate float`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<float>
+        ()
+    }
+
+
+[<Fact>]
 let ``auto can generate decimal`` () =
     Property.check <| property {
         let! _ = GenX.auto<decimal>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate bool`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<bool>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate GUID`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<Guid>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate char`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<char>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate string`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<string>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate DateTime`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<DateTime>
+        ()
+    }
+
+
+[<Fact>]
+let ``auto can generate DateTimeOffset`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<DateTimeOffset>
         ()
     }
