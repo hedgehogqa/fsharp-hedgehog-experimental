@@ -3,6 +3,16 @@ namespace Hedgehog
 open System
 open TypeShape.Core
 
+[<Struct>]
+type AutoOverrides = private AutoOverrides of Map<string, Gen<obj>>
+
+
+module AutoOverrides =
+
+  let internal unwrap (AutoOverrides map) = map
+  let internal map f = unwrap >> f >> AutoOverrides
+
+
 [<CLIMutable; Struct>]
 type AutoGenConfig = {
   Byte : Gen<byte>
@@ -24,7 +34,18 @@ type AutoGenConfig = {
   Uri : Gen<Uri>
   SeqRange : Range<int>
   RecursionDepth: int
+  Overrides: AutoOverrides
 }
+
+
+module AutoGenConfig =
+
+  let mapOverrides f config =
+    { config with Overrides = config.Overrides |> f }
+
+  let addOverride (gen: Gen<'a>) =
+    gen |> Gen.map box |> Map.add typeof<'a>.FullName |> AutoOverrides.map |> mapOverrides
+
 
 module GenX =
 
@@ -357,6 +378,7 @@ module GenX =
     Uri = uri
     SeqRange = Range.exponential 0 50
     RecursionDepth = 1
+    Overrides = AutoOverrides Map.empty
   }
 
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
@@ -382,154 +404,158 @@ module GenX =
           gen { let! f = rf
             return fun dt -> shape.Set dt f } }
 
-    match TypeShape.Create<'a> () with
-    | Shape.Byte -> wrap config.Byte
-    | Shape.Int16 -> wrap config.Int16
-    | Shape.UInt16 -> wrap config.UInt16
-    | Shape.Int32 -> wrap config.Int
-    | Shape.UInt32 -> wrap config.UInt32
-    | Shape.Int64 -> wrap config.Int64
-    | Shape.UInt64 -> wrap config.UInt64
+    match config.Overrides |> AutoOverrides.unwrap |> Map.tryFind typeof<'a>.FullName with
+    | Some gen -> gen |> Gen.map unbox<'a> |> wrap
+    | None ->
 
-    | Shape.Single -> wrap config.Single
-    | Shape.Double -> wrap config.Double
-    | Shape.Decimal -> wrap config.Decimal
+        match TypeShape.Create<'a> () with
+        | Shape.Byte -> wrap config.Byte
+        | Shape.Int16 -> wrap config.Int16
+        | Shape.UInt16 -> wrap config.UInt16
+        | Shape.Int32 -> wrap config.Int
+        | Shape.UInt32 -> wrap config.UInt32
+        | Shape.Int64 -> wrap config.Int64
+        | Shape.UInt64 -> wrap config.UInt64
 
-    | Shape.Bool -> wrap config.Bool
-    | Shape.Guid -> wrap config.Guid
-    | Shape.Char -> wrap config.Char
-    | Shape.DateTime -> wrap config.DateTime
-    | Shape.Uri -> wrap config.Uri
+        | Shape.Single -> wrap config.Single
+        | Shape.Double -> wrap config.Double
+        | Shape.Decimal -> wrap config.Decimal
 
-    | Shape.Unit -> wrap <| Gen.constant ()
+        | Shape.Bool -> wrap config.Bool
+        | Shape.Guid -> wrap config.Guid
+        | Shape.Char -> wrap config.Char
+        | Shape.DateTime -> wrap config.DateTime
+        | Shape.Uri -> wrap config.Uri
 
-    | Shape.String -> wrap config.String
-    | Shape.DateTimeOffset -> wrap config.DateTimeOffset
+        | Shape.Unit -> wrap <| Gen.constant ()
 
-    | Shape.FSharpOption s ->
-        s.Element.Accept {
-          new ITypeVisitor<Gen<'a>> with
-          member __.Visit<'a> () =
-            if canRecurse typeof<'a> then
-              autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.option |> wrap
-            else
-              Gen.constant (None: 'a option) |> wrap}
+        | Shape.String -> wrap config.String
+        | Shape.DateTimeOffset -> wrap config.DateTimeOffset
 
-    | Shape.Array s when s.Rank = 1 ->
-        s.Element.Accept {
-          new ITypeVisitor<Gen<'a>> with
-          member __.Visit<'a> () =
-            if canRecurse typeof<'a> then
-              autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap
-            else
-              Gen.constant ([||]: 'a array) |> wrap}
+        | Shape.FSharpOption s ->
+            s.Element.Accept {
+              new ITypeVisitor<Gen<'a>> with
+              member __.Visit<'a> () =
+                if canRecurse typeof<'a> then
+                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.option |> wrap
+                else
+                  Gen.constant (None: 'a option) |> wrap}
 
-    | Shape.Array _ ->
-        raise (NotSupportedException("Can only generate arrays of rank 1"))
+        | Shape.Array s when s.Rank = 1 ->
+            s.Element.Accept {
+              new ITypeVisitor<Gen<'a>> with
+              member __.Visit<'a> () =
+                if canRecurse typeof<'a> then
+                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap
+                else
+                  Gen.constant ([||]: 'a array) |> wrap}
 
-    | Shape.FSharpList s ->
-        s.Element.Accept {
-          new ITypeVisitor<Gen<'a>> with
-          member __.Visit<'a> () =
-            if canRecurse typeof<'a> then
-              autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap
-            else
-              Gen.constant ([]: 'a list) |> wrap}
+        | Shape.Array _ ->
+            raise (NotSupportedException("Can only generate arrays of rank 1"))
 
-    | Shape.FSharpSet s ->
-        s.Accept {
-          new IFSharpSetVisitor<Gen<'a>> with
-          member __.Visit<'a when 'a : comparison> () =
-            autoInner<'a list> config recursionDepths
-            |> Gen.map Set.ofList
-            |> wrap}
+        | Shape.FSharpList s ->
+            s.Element.Accept {
+              new ITypeVisitor<Gen<'a>> with
+              member __.Visit<'a> () =
+                if canRecurse typeof<'a> then
+                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap
+                else
+                  Gen.constant ([]: 'a list) |> wrap}
 
-    | Shape.FSharpMap s ->
-        s.Accept {
-          new IFSharpMapVisitor<Gen<'a>> with
-          member __.Visit<'k, 'v when 'k : comparison> () =
-            autoInner<('k * 'v) list> config recursionDepths
-            |> Gen.map Map.ofList
-            |> wrap }
+        | Shape.FSharpSet s ->
+            s.Accept {
+              new IFSharpSetVisitor<Gen<'a>> with
+              member __.Visit<'a when 'a : comparison> () =
+                autoInner<'a list> config recursionDepths
+                |> Gen.map Set.ofList
+                |> wrap}
 
-    | Shape.Tuple (:? ShapeTuple<'a> as shape) ->
-        let eGens =
-          shape.Elements
-          |> Array.map mkRandomMember
+        | Shape.FSharpMap s ->
+            s.Accept {
+              new IFSharpMapVisitor<Gen<'a>> with
+              member __.Visit<'k, 'v when 'k : comparison> () =
+                autoInner<('k * 'v) list> config recursionDepths
+                |> Gen.map Map.ofList
+                |> wrap }
 
-        gen {
-          let mutable target = shape.CreateUninitialized ()
-          for eg in eGens do
-            let! u = eg
-            target <- u target
-          return target
-        }
+        | Shape.Tuple (:? ShapeTuple<'a> as shape) ->
+            let eGens =
+              shape.Elements
+              |> Array.map mkRandomMember
 
-    | Shape.FSharpRecord (:? ShapeFSharpRecord<'a> as shape) ->
-        let fieldGen =
-          shape.Fields
-          |> Array.map mkRandomMember
+            gen {
+              let mutable target = shape.CreateUninitialized ()
+              for eg in eGens do
+                let! u = eg
+                target <- u target
+              return target
+            }
 
-        gen {
-          let mutable target = shape.CreateUninitialized ()
-          for eg in fieldGen do
-            let! u = eg
-            target <- u target
-          return target
-        }
+        | Shape.FSharpRecord (:? ShapeFSharpRecord<'a> as shape) ->
+            let fieldGen =
+              shape.Fields
+              |> Array.map mkRandomMember
 
-    | Shape.FSharpUnion (:? ShapeFSharpUnion<'a> as shape) ->
-        let caseFieldGen =
-          shape.UnionCases
-          |> Array.map (fun uc -> uc.Fields |> Array.map mkRandomMember)
+            gen {
+              let mutable target = shape.CreateUninitialized ()
+              for eg in fieldGen do
+                let! u = eg
+                target <- u target
+              return target
+            }
 
-        gen {
-          let! tag = Gen.integral <| Range.constant 0 (caseFieldGen.Length - 1)
-          let mutable u = shape.UnionCases.[tag].CreateUninitialized ()
-          for f in caseFieldGen.[tag] do
-            let! uf = f
-            u <- uf u
-          return u
-        }
+        | Shape.FSharpUnion (:? ShapeFSharpUnion<'a> as shape) ->
+            let caseFieldGen =
+              shape.UnionCases
+              |> Array.map (fun uc -> uc.Fields |> Array.map mkRandomMember)
 
-    | Shape.Enum _ ->
-        let values = Enum.GetValues(typeof<'a>)
-        gen {
-          let! index = Gen.integral <| Range.constant 0 (values.Length - 1)
-          return values.GetValue index |> unbox
-        }
+            gen {
+              let! tag = Gen.integral <| Range.constant 0 (caseFieldGen.Length - 1)
+              let mutable u = shape.UnionCases.[tag].CreateUninitialized ()
+              for f in caseFieldGen.[tag] do
+                let! uf = f
+                u <- uf u
+              return u
+            }
 
-    | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
-        let propGen = shape.Properties |> Array.map mkRandomMember
-        gen {
-          let mutable target = shape.CreateUninitialized ()
-          for ep in propGen do
-            let! up = ep
-            target <- up target
-          return target
-        }
+        | Shape.Enum _ ->
+            let values = Enum.GetValues(typeof<'a>)
+            gen {
+              let! index = Gen.integral <| Range.constant 0 (values.Length - 1)
+              return values.GetValue index |> unbox
+            }
 
-    | Shape.Poco (:? ShapePoco<'a> as shape) ->
-        let bestCtor =
-          shape.Constructors
-          |> Seq.filter (fun c -> c.IsPublic)
-          |> Seq.sortBy (fun c -> c.Arity)
-          |> Seq.tryHead
+        | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
+            let propGen = shape.Properties |> Array.map mkRandomMember
+            gen {
+              let mutable target = shape.CreateUninitialized ()
+              for ep in propGen do
+                let! up = ep
+                target <- up target
+              return target
+            }
 
-        match bestCtor with
-        | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'a>
-        | Some ctor ->
-          ctor.Accept {
-          new IConstructorVisitor<'a, Gen<'a>> with
-            member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-              let paramGen = autoInner<'CtorParams> config recursionDepths
-              gen { 
-                let! args = paramGen
-                return ctor.Invoke args
+        | Shape.Poco (:? ShapePoco<'a> as shape) ->
+            let bestCtor =
+              shape.Constructors
+              |> Seq.filter (fun c -> c.IsPublic)
+              |> Seq.sortBy (fun c -> c.Arity)
+              |> Seq.tryHead
+
+            match bestCtor with
+            | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'a>
+            | Some ctor ->
+              ctor.Accept {
+              new IConstructorVisitor<'a, Gen<'a>> with
+                member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
+                  let paramGen = autoInner<'CtorParams> config recursionDepths
+                  gen {
+                    let! args = paramGen
+                    return ctor.Invoke args
+                  }
               }
-          }
 
-    | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s" typeof<'a>.FullName)
+        | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s" typeof<'a>.FullName)
 
   let auto<'a> = autoInner<'a> defaults Map.empty
 

@@ -672,3 +672,35 @@ let ``auto can generate DateTimeOffset`` () =
         let! _ = GenX.auto<DateTimeOffset>
         ()
     }
+
+
+type TypeWithoutAccessibleCtor private (state: int) =
+    static member CustomConstructor (state) = TypeWithoutAccessibleCtor (state)
+    member this.State = state
+
+
+let myTypeGen = gen {
+    let! state = Gen.int <| Range.exponentialBounded ()
+    return TypeWithoutAccessibleCtor.CustomConstructor state
+}
+
+
+[<Fact>]
+let ``auto can generate custom classes with no suitable constructors using overrides`` () =
+  Property.check' 1<tests> <| property {
+      let config = GenX.defaults |> AutoGenConfig.addOverride myTypeGen
+      let! _ = GenX.autoWith<TypeWithoutAccessibleCtor> config
+      ()
+  }
+
+
+let constantIntGen = Gen.constant 1
+
+
+[<Fact>]
+let ``auto uses specified overrides`` () =
+  Property.check <| property {
+      let config = GenX.defaults |> AutoGenConfig.addOverride constantIntGen
+      let! i = GenX.autoWith<int> config
+      test <@ i = 1 @>
+  }
