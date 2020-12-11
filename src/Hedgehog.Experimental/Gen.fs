@@ -526,7 +526,7 @@ module GenX =
               }
           }
 
-    | _ -> raise <| NotSupportedException ()
+    | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s" typeof<'a>.FullName)
 
   let auto<'a> = autoInner<'a> defaults Map.empty
 
