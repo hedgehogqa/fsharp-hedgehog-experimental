@@ -12,6 +12,7 @@ type AutoGenConfig = {
   UInt32 : Gen<uint32>
   Int64 : Gen<int64>
   UInt64 : Gen<uint64>
+  Single : Gen<single>
   Double : Gen<double>
   Decimal : Gen<decimal>
   Bool : Gen<bool>
@@ -344,6 +345,7 @@ module GenX =
     UInt32 = Gen.uint32 <| Range.exponentialBounded ()
     Int64 = Gen.int64 <| Range.exponentialBounded ()
     UInt64 = Gen.uint64 <| Range.exponentialBounded ()
+    Single = Gen.float (Range.exponentialFrom 0. (float Single.MinValue) (float Single.MaxValue)) |> Gen.map single
     Double = Gen.float <| Range.exponentialBounded ()
     Decimal = Gen.float (Range.exponentialFrom 0. (float Decimal.MinValue) (float Decimal.MaxValue)) |> Gen.map decimal
     Bool = Gen.bool
@@ -389,6 +391,7 @@ module GenX =
     | Shape.Int64 -> wrap config.Int64
     | Shape.UInt64 -> wrap config.UInt64
 
+    | Shape.Single -> wrap config.Single
     | Shape.Double -> wrap config.Double
     | Shape.Decimal -> wrap config.Decimal
 

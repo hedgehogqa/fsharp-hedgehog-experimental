@@ -603,6 +603,14 @@ let ``auto can generate uint64`` () =
 
 
 [<Fact>]
+let ``auto can generate single`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<single>
+        ()
+    }
+
+
+[<Fact>]
 let ``auto can generate float`` () =
     Property.check <| property {
         let! _ = GenX.auto<float>
