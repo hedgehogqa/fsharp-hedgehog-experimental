@@ -543,3 +543,11 @@ let ``auto can generate enums`` () =
         test <@ enums |> List.contains Enum.B @>
         test <@ enums |> List.forall (fun e -> e = Enum.A || e = Enum.B) @>
     }
+
+
+[<Fact>]
+let ``auto can generate decimal`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<decimal>
+        ()
+    }
