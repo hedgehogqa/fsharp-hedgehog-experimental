@@ -13,7 +13,7 @@ module AutoOverrides =
   let internal map f = unwrap >> f >> AutoOverrides
 
 
-[<CLIMutable; Struct>]
+[<CLIMutable>]
 type AutoGenConfig = {
   Byte : Gen<byte>
   Int16 : Gen<int16>
