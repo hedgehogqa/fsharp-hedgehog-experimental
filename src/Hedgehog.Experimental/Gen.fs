@@ -389,7 +389,7 @@ module GenX =
             return fun dt -> shape.Set dt f } }
 
     match config.Generators |> GeneratorCollection.unwrap |> Map.tryFind typeof<'a>.FullName with
-    | Some gen -> gen |> Gen.map unbox<'a> |> wrap
+    | Some gen -> gen |> Gen.map unbox<'a>
     | None ->
 
         match TypeShape.Create<'a> () with
