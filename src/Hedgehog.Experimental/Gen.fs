@@ -519,7 +519,7 @@ module GenX =
                   }
               }
 
-        | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s" typeof<'a>.FullName)
+        | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s. You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto." typeof<'a>.FullName)
 
   let auto<'a> = autoInner<'a> defaults Map.empty
 
