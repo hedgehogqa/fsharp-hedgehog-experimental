@@ -1,5 +1,9 @@
 # Changelog
 
+### vNext
+
+* **Breaking:** All the default `Gen<_>` members are removed from `AutoGenConfig`. Where you previously used copy-and-update syntax like `{ GenX.defaults with Int = ... }` to override default primitive auto-generators, you must now use `GenX.defaults |> AutoGenConfig.addGenerator ...` (the same API now used for overriding the generator for any type, including user-defined types).
+
 ### 0.2.3 (2020-07-27)
 
 * Updated dependencies

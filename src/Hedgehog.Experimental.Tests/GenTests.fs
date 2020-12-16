@@ -688,7 +688,7 @@ let myTypeGen = gen {
 [<Fact>]
 let ``auto can generate custom classes with no suitable constructors using overrides`` () =
   Property.check' 1<tests> <| property {
-      let config = GenX.defaults |> AutoGenConfig.addOverride myTypeGen
+      let config = GenX.defaults |> AutoGenConfig.addGenerator myTypeGen
       let! _ = GenX.autoWith<TypeWithoutAccessibleCtor> config
       ()
   }
@@ -700,7 +700,7 @@ let constantIntGen = Gen.constant 1
 [<Fact>]
 let ``auto uses specified overrides`` () =
   Property.check <| property {
-      let config = GenX.defaults |> AutoGenConfig.addOverride constantIntGen
+      let config = GenX.defaults |> AutoGenConfig.addGenerator constantIntGen
       let! i = GenX.autoWith<int> config
       test <@ i = 1 @>
   }

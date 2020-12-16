@@ -190,35 +190,22 @@ let! recursive = GenX.auto<Recursive>
 // (subject to change).
 ```
 
-**Generate any type automatically and override default auto-generators:**
+**Generate any type automatically and override default generators and settings:**
 
 ```f#
-let! myVal = GenX.autoWith<MyType> {GenX.defaults with String = ...; SeqRange = ...}
+let! myVal =
+  {GenX.defaults with 
+     SeqRange = Range.exponential 1 10
+     RecursionDepth = 2}
+  // Will use this generator for all ints
+  |> AutoGenConfig.addGenerator (Gen.int (Range.linear 0 10))
+  // Will use this generator when generating its return type
+  |> AutoGenConfig.addGenerator Gen.myCustomGen
+  // Generate using the config above
+  |> GenX.autoWith<MyType>
 ```
 
-The current defaults are (see Gen.fs for up-to-date list):
-
-```f#
-let defaults =
-  { Byte = Gen.byte <| Range.exponentialBounded ()
-    Int16 = Gen.int16 <| Range.exponentialBounded ()
-    UInt16 = Gen.uint16 <| Range.exponentialBounded ()
-    Int = Gen.int <| Range.exponentialBounded ()
-    UInt32 = Gen.uint32 <| Range.exponentialBounded ()
-    Int64 = Gen.int64 <| Range.exponentialBounded ()
-    UInt64 = Gen.uint64 <| Range.exponentialBounded ()
-    Double = Gen.double <| Range.exponentialBounded ()
-    Decimal = Gen.double <| Range.exponentialBounded () |> Gen.map decimal
-    Bool = Gen.bool
-    Guid = Gen.guid
-    Char = Gen.latin1
-    String = Gen.string (Range.linear 0 50) Gen.latin1
-    DateTime = Gen.dateTime
-    DateTimeOffset = Gen.dateTime |> Gen.map System.DateTimeOffset
-    Uri = uri  // custom generator in this library
-    SeqRange = Range.exponential 0 50
-    RecursionDepth = 1 }
-```
+If you’re not happy with the auto-gen defaults, you can of course create your own generator that calls `GenX.autoWith` with your chosen config and use that everywhere.
 
 Deployment checklist
 --------------------

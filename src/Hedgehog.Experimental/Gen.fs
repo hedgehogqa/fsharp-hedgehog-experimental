@@ -4,47 +4,30 @@ open System
 open TypeShape.Core
 
 [<Struct>]
-type AutoOverrides = private AutoOverrides of Map<string, Gen<obj>>
+type GeneratorCollection = private GeneratorCollection of Map<string, Gen<obj>>
 
 
-module AutoOverrides =
+module GeneratorCollection =
 
-  let internal unwrap (AutoOverrides map) = map
-  let internal map f = unwrap >> f >> AutoOverrides
+  let internal unwrap (GeneratorCollection map) = map
+  let internal map f = unwrap >> f >> GeneratorCollection
 
 
 [<CLIMutable>]
 type AutoGenConfig = {
-  Byte : Gen<byte>
-  Int16 : Gen<int16>
-  UInt16 : Gen<uint16>
-  Int : Gen<int>
-  UInt32 : Gen<uint32>
-  Int64 : Gen<int64>
-  UInt64 : Gen<uint64>
-  Single : Gen<single>
-  Double : Gen<double>
-  Decimal : Gen<decimal>
-  Bool : Gen<bool>
-  Guid : Gen<Guid>
-  Char : Gen<Char>
-  String : Gen<String>
-  DateTime : Gen<DateTime>
-  DateTimeOffset : Gen<DateTimeOffset>
-  Uri : Gen<Uri>
   SeqRange : Range<int>
   RecursionDepth: int
-  Overrides: AutoOverrides
+  Generators: GeneratorCollection
 }
 
 
 module AutoGenConfig =
 
-  let mapOverrides f config =
-    { config with Overrides = config.Overrides |> f }
+  let mapGenerators f config =
+    { config with Generators = config.Generators |> f }
 
-  let addOverride (gen: Gen<'a>) =
-    gen |> Gen.map box |> Map.add typeof<'a>.FullName |> AutoOverrides.map |> mapOverrides
+  let addGenerator (gen: Gen<'a>) =
+    gen |> Gen.map box |> Map.add typeof<'a>.FullName |> GeneratorCollection.map |> mapGenerators
 
 
 module GenX =
@@ -358,28 +341,29 @@ module GenX =
       return inputs, (fun x -> inOutMap.Item x)
     }
 
-  let defaults = {
-    Byte = Gen.byte <| Range.exponentialBounded ()
-    Int16 = Gen.int16 <| Range.exponentialBounded ()
-    UInt16 = Gen.uint16 <| Range.exponentialBounded ()
-    Int = Gen.int <| Range.exponentialBounded ()
-    UInt32 = Gen.uint32 <| Range.exponentialBounded ()
-    Int64 = Gen.int64 <| Range.exponentialBounded ()
-    UInt64 = Gen.uint64 <| Range.exponentialBounded ()
-    Single = Gen.float (Range.exponentialFrom 0. (float Single.MinValue) (float Single.MaxValue)) |> Gen.map single
-    Double = Gen.float <| Range.exponentialBounded ()
-    Decimal = Gen.float (Range.exponentialFrom 0. (float Decimal.MinValue) (float Decimal.MaxValue)) |> Gen.map decimal
-    Bool = Gen.bool
-    Guid = Gen.guid
-    Char = Gen.latin1
-    String = Gen.string (Range.linear 0 50) Gen.latin1
-    DateTime = Gen.dateTime
-    DateTimeOffset = Gen.dateTime |> Gen.map DateTimeOffset
-    Uri = uri
-    SeqRange = Range.exponential 0 50
-    RecursionDepth = 1
-    Overrides = AutoOverrides Map.empty
-  }
+  let defaults =
+    {
+      SeqRange = Range.exponential 0 50
+      RecursionDepth = 1
+      Generators = GeneratorCollection Map.empty
+    }
+    |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.uint16 <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.int <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.uint32 <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.int64 <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.uint64 <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.float (Range.exponentialFrom 0. (float Single.MinValue) (float Single.MaxValue)) |> Gen.map single)
+    |> AutoGenConfig.addGenerator (Gen.float <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.float (Range.exponentialFrom 0. (float Decimal.MinValue) (float Decimal.MaxValue)) |> Gen.map decimal)
+    |> AutoGenConfig.addGenerator Gen.bool
+    |> AutoGenConfig.addGenerator Gen.guid
+    |> AutoGenConfig.addGenerator Gen.latin1
+    |> AutoGenConfig.addGenerator (Gen.string (Range.linear 0 50) Gen.latin1)
+    |> AutoGenConfig.addGenerator Gen.dateTime
+    |> AutoGenConfig.addGenerator (Gen.dateTime |> Gen.map DateTimeOffset)
+    |> AutoGenConfig.addGenerator uri
 
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
@@ -404,33 +388,13 @@ module GenX =
           gen { let! f = rf
             return fun dt -> shape.Set dt f } }
 
-    match config.Overrides |> AutoOverrides.unwrap |> Map.tryFind typeof<'a>.FullName with
+    match config.Generators |> GeneratorCollection.unwrap |> Map.tryFind typeof<'a>.FullName with
     | Some gen -> gen |> Gen.map unbox<'a> |> wrap
     | None ->
 
         match TypeShape.Create<'a> () with
-        | Shape.Byte -> wrap config.Byte
-        | Shape.Int16 -> wrap config.Int16
-        | Shape.UInt16 -> wrap config.UInt16
-        | Shape.Int32 -> wrap config.Int
-        | Shape.UInt32 -> wrap config.UInt32
-        | Shape.Int64 -> wrap config.Int64
-        | Shape.UInt64 -> wrap config.UInt64
-
-        | Shape.Single -> wrap config.Single
-        | Shape.Double -> wrap config.Double
-        | Shape.Decimal -> wrap config.Decimal
-
-        | Shape.Bool -> wrap config.Bool
-        | Shape.Guid -> wrap config.Guid
-        | Shape.Char -> wrap config.Char
-        | Shape.DateTime -> wrap config.DateTime
-        | Shape.Uri -> wrap config.Uri
 
         | Shape.Unit -> wrap <| Gen.constant ()
-
-        | Shape.String -> wrap config.String
-        | Shape.DateTimeOffset -> wrap config.DateTimeOffset
 
         | Shape.FSharpOption s ->
             s.Element.Accept {
