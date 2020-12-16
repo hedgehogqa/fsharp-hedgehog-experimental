@@ -23,7 +23,7 @@ type AutoGenConfig = {
 
 module AutoGenConfig =
 
-  let mapGenerators f config =
+  let private mapGenerators f config =
     { config with Generators = config.Generators |> f }
 
   let addGenerator (gen: Gen<'a>) =
