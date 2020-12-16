@@ -2,7 +2,10 @@
 
 ### vNext
 
+* Auto-generator now supports overrides; use`GenX.defaults |> AutoGenConfig.addGenerator ...` to add your custom generators
 * **Breaking:** All the default `Gen<_>` members are removed from `AutoGenConfig`. Where you previously used copy-and-update syntax like `{ GenX.defaults with Int = ... }` to override default primitive auto-generators, you must now use `GenX.defaults |> AutoGenConfig.addGenerator ...` (the same API now used for overriding the generator for any type, including user-defined types).
+* Fixed decimal auto-generator generating out-of-bounds values
+* Added support for `single` to auto-generator
 
 ### 0.2.3 (2020-07-27)
 
