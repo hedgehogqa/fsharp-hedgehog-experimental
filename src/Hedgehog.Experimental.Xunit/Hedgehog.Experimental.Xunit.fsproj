@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <DebugType>Embedded</DebugType>
+    <EmbedAllSources>True</EmbedAllSources>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <Description>Hedgehog with batteries for Xunit included.</Description>
+    <Authors>Christer van der Meeren, Nikos Baxevanis, Jacob Stanley</Authors>
+    <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
+    <PackageTags>f# fsharp testing xunit</PackageTags>
+    <PackageIcon>SQUARE_hedgehog_128x128.png</PackageIcon>
+    <Version>0.0.1</Version>
+    <PackageReleaseNotes>Initial release</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hedgehog" Version="0.8.4" />
+    <PackageReference Include="xunit" Version="2.4.1" />
+    <PackageReference Include="xunit.abstractions" Version="2.0.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="ArrayGen.fs" />
+    <Compile Include="PropertyAttribute.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hedgehog.Experimental\Hedgehog.Experimental.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="5.0.0" />
+  </ItemGroup>
+
+</Project>
