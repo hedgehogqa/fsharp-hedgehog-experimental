@@ -5,9 +5,11 @@ open Xunit
 open Swensen.Unquote
 open Hedgehog
 
+let checkWith tests = PropertyConfig.defaultConfig |> PropertyConfig.withTests tests |> Property.checkWith
+
 [<Fact>]
 let ``uri generates valid URIs`` () =
-    Property.check' 10000<tests> <| property {
+    checkWith 10000<tests> <| property {
         let! uri = GenX.uri
         ignore uri
     }
@@ -24,7 +26,7 @@ let ``shuffle does not add or remove elements`` () =
 
 [<Fact>]
 let ``shuffle creates random permutations of the input list`` () =
-    Property.check' 1<tests> <| property {
+    checkWith 1<tests> <| property {
         let! xs =
             Gen.int (Range.constantFrom 0 -100 100)
             |> Gen.list (Range.singleton 10)
@@ -43,7 +45,7 @@ let ``shuffleCase does not add, remove, or change the order of characters`` () =
 
 [<Fact>]
 let ``shuffleCase creates random case permutations of the input string`` () =
-    Property.check' 1<tests> <| property {
+    checkWith 1<tests> <| property {
         let! xs = Gen.string (Range.linear 50 100) Gen.alpha
         let! permutations = xs |> GenX.shuffleCase |> Gen.list (Range.singleton 100)
         test <@ permutations |> List.distinct |> List.length > 50 @>
@@ -326,7 +328,7 @@ let ``auto with recursive option members respects max recursion depth`` () =
 
 [<Fact>]
 let ``auto with recursive option members generates some values with max recursion depth`` () =
-    Property.check' 10<tests> <| property {
+    checkWith 10<tests> <| property {
         let! depth = Gen.int <| Range.linear 1 5
         let! xs = GenX.autoWith<RecOption> {GenX.defaults with RecursionDepth = depth}
                   |> (Gen.list (Range.singleton 100))
@@ -358,7 +360,7 @@ let ``auto with recursive array members respects max recursion depth`` () =
 
 [<Fact>]
 let ``auto with recursive array members generates some values with max recursion depth`` () =
-    Property.check' 10<tests> <| property {
+    checkWith 10<tests> <| property {
         let! depth = Gen.int <| Range.linear 1 5
         let! xs = GenX.autoWith<RecArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
@@ -390,7 +392,7 @@ let ``auto with recursive list members respects max recursion depth`` () =
 
 [<Fact>]
 let ``auto with recursive list members generates some values with max recursion depth`` () =
-    Property.check' 10<tests> <| property {
+    checkWith 10<tests> <| property {
         let! depth = Gen.int <| Range.linear 1 5
         let! xs = GenX.autoWith<RecList> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
@@ -422,7 +424,7 @@ let ``auto with recursive set members respects max recursion depth`` () =
 
 [<Fact>]
 let ``auto with recursive set members generates some values with max recursion depth`` () =
-    Property.check' 10<tests> <| property {
+    checkWith 10<tests> <| property {
         let! depth = Gen.int <| Range.linear 1 5
         let! xs = GenX.autoWith<RecSet> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
@@ -454,7 +456,7 @@ let ``auto with recursive map members respects max recursion depth`` () =
 
 [<Fact>]
 let ``auto with recursive map members generates some values with max recursion depth`` () =
-    Property.check' 10<tests> <| property {
+    checkWith 10<tests> <| property {
         let! depth = Gen.int <| Range.linear 1 5
         let! xs = GenX.autoWith<RecMap> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
@@ -504,7 +506,7 @@ let ``auto with mutually recursive types respects max recursion depth`` () =
 
 [<Fact>]
 let ``auto with mutually recursive types generates some values with max recursion depth`` () =
-    Property.check' 10<tests> <| property {
+    checkWith 10<tests> <| property {
         let! depth = Gen.int <| Range.linear 1 5
         let! xs1 = GenX.autoWith<MutuallyRecursive1> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
@@ -523,7 +525,7 @@ let ``auto with UInt64 generates UInt64`` () =
 
 [<Fact>]
 let ``auto can generate valid URIs`` () =
-    Property.check' 10000<tests> <| property {
+    checkWith 10000<tests> <| property {
         let! uri = GenX.auto<System.Uri>
         ignore uri
     }
@@ -536,7 +538,7 @@ type Enum =
 
 [<Fact>]
 let ``auto can generate enums`` () =
-    Property.check' 1<tests> <| property {
+    checkWith 1<tests> <| property {
         let! enums =
           GenX.auto<Enum>
           |> GenX.cList 1000 1000
@@ -687,7 +689,7 @@ let myTypeGen = gen {
 
 [<Fact>]
 let ``auto can generate custom classes with no suitable constructors using overrides`` () =
-  Property.check' 1<tests> <| property {
+  checkWith 1<tests> <| property {
       let config = GenX.defaults |> AutoGenConfig.addGenerator myTypeGen
       let! _ = GenX.autoWith<TypeWithoutAccessibleCtor> config
       ()
