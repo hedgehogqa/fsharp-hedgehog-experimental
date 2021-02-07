@@ -277,7 +277,7 @@ module GenX =
   let increasing4 (g : Gen<'a * 'a * 'a * 'a>) : Gen<'a * 'a * 'a * 'a> =
     g |> sorted4 |> distinct4
 
-  /// Generates a tuple of datetimes where the dayRange determines the minimum
+  /// Generates a tuple of datetimes where dayRange determines the minimum
   /// and maximum number of days apart. Positive numbers means the datetimes
   /// will be in increasing order, and vice versa.
   let dateInterval (dayRange : Range<int>) : Gen<DateTime * DateTime> =
@@ -374,8 +374,8 @@ module GenX =
     |> AutoGenConfig.addGenerator Gen.guid
     |> AutoGenConfig.addGenerator Gen.latin1
     |> AutoGenConfig.addGenerator (Gen.string (Range.linear 0 50) Gen.latin1)
-    |> AutoGenConfig.addGenerator (dateTimeRange |> Gen.dateTime)
-    |> AutoGenConfig.addGenerator (dateTimeRange |> Gen.dateTime |> Gen.map DateTimeOffset)
+    |> AutoGenConfig.addGenerator (Gen.dateTime dateTimeRange)
+    |> AutoGenConfig.addGenerator (Gen.dateTime dateTimeRange |> Gen.map DateTimeOffset)
     |> AutoGenConfig.addGenerator uri
 
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
