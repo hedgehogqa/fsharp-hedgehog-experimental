@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.4.0 (2021-02-07)
+
+* Updated for Hedgehog 0.10.0
+* `Gen.auto` now uses Hedgehog’s new `DateTime` and `DateTimeOffset` generators
+
 ### 0.3.0 (2021-01-06)
 
 * Auto-generator now supports overrides; use`GenX.defaults |> AutoGenConfig.addGenerator ...` to add your custom generators
