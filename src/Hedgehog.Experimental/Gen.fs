@@ -277,7 +277,7 @@ module GenX =
   let increasing4 (g : Gen<'a * 'a * 'a * 'a>) : Gen<'a * 'a * 'a * 'a> =
     g |> sorted4 |> distinct4
 
-  /// Generates a tuple of datetimes where the range determines the minimum
+  /// Generates a tuple of datetimes where the dayRange determines the minimum
   /// and maximum number of days apart. Positive numbers means the datetimes
   /// will be in increasing order, and vice versa.
   let dateInterval (dayRange : Range<int>) : Gen<DateTime * DateTime> =
@@ -286,9 +286,16 @@ module GenX =
         dayRange
         |> Range.map (fun days -> int64 days * TimeSpan.TicksPerDay)
         |> Gen.integral
+      let dateTimeRange =
+        Range.exponentialFrom
+          (DateTime(2000, 1, 1)).Ticks
+          DateTime.MinValue.Ticks
+          DateTime.MaxValue.Ticks
+        |> Range.map DateTime
 
       let! dt1 =
-        Gen.dateTime
+        dateTimeRange
+        |> Gen.dateTime
         |> Gen.filter
           (fun dt ->
             dt.Ticks + ticksApart > DateTime.MinValue.Ticks
@@ -342,6 +349,12 @@ module GenX =
     }
 
   let defaults =
+    let dateTimeRange =
+      Range.exponentialFrom
+        (DateTime(2000, 1, 1)).Ticks
+        DateTime.MinValue.Ticks
+        DateTime.MaxValue.Ticks
+      |> Range.map DateTime
     {
       SeqRange = Range.exponential 0 50
       RecursionDepth = 1
@@ -361,8 +374,8 @@ module GenX =
     |> AutoGenConfig.addGenerator Gen.guid
     |> AutoGenConfig.addGenerator Gen.latin1
     |> AutoGenConfig.addGenerator (Gen.string (Range.linear 0 50) Gen.latin1)
-    |> AutoGenConfig.addGenerator Gen.dateTime
-    |> AutoGenConfig.addGenerator (Gen.dateTime |> Gen.map DateTimeOffset)
+    |> AutoGenConfig.addGenerator (dateTimeRange |> Gen.dateTime)
+    |> AutoGenConfig.addGenerator (dateTimeRange |> Gen.dateTime |> Gen.map DateTimeOffset)
     |> AutoGenConfig.addGenerator uri
 
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
