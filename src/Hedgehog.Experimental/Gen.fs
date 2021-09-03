@@ -393,13 +393,13 @@ module GenX =
     let wrap (t : Gen<'b>) =
       unbox<Gen<'a>> t
 
-    let mkRandomMember (shape : IShapeMember<'DeclaringType>) =
+    let memberSetterGenerator (shape: IShapeMember<'DeclaringType>) =
       shape.Accept {
         new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
-        member __.Visit(shape : ShapeMember<'DeclaringType, 'Field>) =
-          let rf = autoInner<'Field> config recursionDepths
-          gen { let! f = rf
-            return fun dt -> shape.Set dt f } }
+        member _.Visit(shape: ShapeMember<'DeclaringType, 'MemberType>) =
+          autoInner<'MemberType> config recursionDepths
+          |> Gen.map (fun mt -> fun dt -> shape.Set dt mt)
+      }
 
     match config.Generators |> GeneratorCollection.unwrap |> Map.tryFind typeof<'a>.FullName with
     | Some gen -> gen |> Gen.map unbox<'a>
@@ -458,13 +458,13 @@ module GenX =
         | Shape.Tuple (:? ShapeTuple<'a> as shape) ->
             shape.Elements
             |> Seq.toList
-            |> ListGen.traverse mkRandomMember
+            |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
         | Shape.FSharpRecord (:? ShapeFSharpRecord<'a> as shape) ->
             shape.Fields
             |> Seq.toList
-            |> ListGen.traverse mkRandomMember
+            |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
         | Shape.FSharpUnion (:? ShapeFSharpUnion<'a> as shape) ->
@@ -473,7 +473,7 @@ module GenX =
               |> Array.map (fun uc ->
                  uc.Fields
                  |> Seq.toList
-                 |> ListGen.traverse mkRandomMember)
+                 |> ListGen.traverse memberSetterGenerator)
             gen {
               let! caseIdx = Gen.integral <| Range.constant 0 (cases.Length - 1)
               let! fs = cases.[caseIdx]
@@ -490,7 +490,7 @@ module GenX =
         | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
             shape.Properties
             |> Seq.toList
-            |> ListGen.traverse mkRandomMember
+            |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
         | Shape.Poco (:? ShapePoco<'a> as shape) ->
