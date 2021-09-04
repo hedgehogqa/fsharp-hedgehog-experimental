@@ -153,14 +153,17 @@ module GenX =
   /// Generates a permutation of the given list.
   // "Inside-out" algorithm of Fisher-Yates shuffle from https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_%22inside-out%22_algorithm
   let shuffle (xs: 'a list) =
-    gen {
+    xs
+    |> List.mapi (fun i _ -> Gen.integral (Range.constant 0 i))
+    |> ListGen.sequence
+    |> Gen.map (fun list ->
       let shuffled = Array.zeroCreate<'a>(xs.Length)
-      for i = 0 to xs.Length - 1 do
-        let! j = Gen.integral (Range.constant 0 i)
-        if i <> j then shuffled.[i] <- shuffled.[j]
-        shuffled.[j] <- xs.[i]
-      return shuffled |> Array.toList
-    }
+      list
+      |> List.zip xs
+      |> List.iteri (fun i (a, j) ->
+        shuffled.[i] <- shuffled.[j]
+        shuffled.[j] <- a)
+      shuffled |> Array.toList)
 
   /// Shuffles the case of the given string.
   let shuffleCase (s: string) =
