@@ -779,4 +779,4 @@ let ``shuffleCase shrinks correctly`` () =
   }
   let report = Property.report property
   let rendered = Report.render report
-  test <@ rendered.Contains "\"Abcdefg\".StartsWith(\"A\")" @>
+  test <@ rendered.Contains "\"Abcdefg\"" @>
