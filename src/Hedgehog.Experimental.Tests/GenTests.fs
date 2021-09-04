@@ -779,4 +779,21 @@ let ``shuffleCase shrinks correctly`` () =
   }
   let report = Property.report property
   let rendered = Report.render report
-  test <@ rendered.Contains "\"Abcdefg\".StartsWith(\"A\")" @>
+  test <@ rendered.Contains "\"Abcdefg\"" @>
+
+[<Fact>]
+let ``shuffle shrinks correctly`` () =
+  let property = property {
+    let n = 10
+    let nMinus1 = n - 1
+    let! value =
+      ()
+      |> Seq.replicate n
+      |> Seq.mapi (fun i _ -> i)
+      |> Seq.toList
+      |> GenX.shuffle
+    test <@ nMinus1 <> value.Head @>
+  }
+  let report = Property.report property
+  let rendered = Report.render report
+  test <@ rendered.Contains "[9; 0; 1; 2; 3; 4; 5; 6; 7; 8]" @>
