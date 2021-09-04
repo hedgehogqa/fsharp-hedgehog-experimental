@@ -706,3 +706,67 @@ let ``auto uses specified overrides`` () =
       let! i = GenX.autoWith<int> config
       test <@ i = 1 @>
   }
+
+
+type MyRecord =
+  { String: string
+    Int: int }
+
+[<Fact>]
+let ``auto of record shrinks correctly`` () =
+  let property = property {
+    let! value = GenX.auto<MyRecord>
+    test <@ not (value.String.Contains('b')) @>
+  }
+  let report = Property.report property
+  let rendered = Report.render report
+  test <@ rendered.Contains "{String = \"b\";\n Int = 0;}" @>
+
+
+type MyCliMutable() =
+  let mutable myString = ""
+  let mutable myInt = 0
+  member _.String
+    with get () = myString
+    and set value = myString <- value
+  member _.Int
+    with get () = myInt
+    and set value = myInt <- value
+  override _.ToString() =
+    "String = " + myString + "; Int = " + myInt.ToString()
+
+[<Fact>]
+let ``auto of CLI mutable shrinks correctly`` () =
+  let property = property {
+    let! value = GenX.auto<MyCliMutable>
+    test <@ not (value.String.Contains('b')) @>
+  }
+  let report = Property.report property
+  let rendered = Report.render report
+  test <@ rendered.Contains "String = b; Int = 0" @>
+
+
+[<RequireQualifiedAccess>]
+type MyDu =
+  | Case1 of String * int
+
+[<Fact>]
+let ``auto of discriminated union shrinks correctly`` () =
+  let property = property {
+    let! MyDu.Case1(s, i) = GenX.auto<MyDu>
+    test <@ not (s.Contains('b')) @>
+  }
+  let report = Property.report property
+  let rendered = Report.render report
+  test <@ rendered.Contains "Case1 (\"b\",0)" @>
+
+
+[<Fact>]
+let ``auto of tuple shrinks correctly`` () =
+  let property = property {
+    let! (s, _) = GenX.auto<string * int>
+    test <@ not (s.Contains('b')) @>
+  }
+  let report = Property.report property
+  let rendered = Report.render report
+  test <@ rendered.Contains "(\"b\", 0)" @>

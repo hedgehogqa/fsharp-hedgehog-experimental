@@ -1,5 +1,8 @@
 # Changelog
 
+### 0.4.1
+* The `Gen.auto` cases for records, classes, discriminated unions, and tuples now shrink correctly.
+
 ### 0.4.0 (2021-02-07)
 
 * Updated for Hedgehog 0.10.0
