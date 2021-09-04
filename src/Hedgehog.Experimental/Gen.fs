@@ -164,14 +164,16 @@ module GenX =
 
   /// Shuffles the case of the given string.
   let shuffleCase (s: string) =
-    gen {
-     let sb = Text.StringBuilder()
-     for i = 0 to s.Length - 1 do
-       let! b = Gen.bool
-       let f = if b then Char.ToUpperInvariant else Char.ToLowerInvariant
-       sb.Append (f s.[i]) |> ignore
-     return sb.ToString()
-    }
+    Gen.bool
+    |> List.replicate s.Length
+    |> ListGen.sequence
+    |> Gen.map (fun bs ->
+      let sb = Text.StringBuilder ()
+      bs
+      |> List.iteri (fun i b ->
+        let f = if b then Char.ToUpperInvariant else Char.ToLowerInvariant
+        sb.Append (f s.[i]) |> ignore)
+      sb.ToString())
 
   /// Generates a string that is not equal to another string using
   /// StringComparison.OrdinalIgnoreCase.
