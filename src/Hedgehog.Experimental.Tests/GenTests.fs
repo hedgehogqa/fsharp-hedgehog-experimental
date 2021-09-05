@@ -837,7 +837,6 @@ type Tests (output: ITestOutputHelper) =
   do new Converter(output) |> Console.SetOut
   [<Fact>]
   member _.``tyson`` () =
-    printfn "hi world"
     let property = property {
       let! array =
         { GenX.defaults with SeqRange = Range.constant 2 5 }
