@@ -437,7 +437,7 @@ module GenX =
                       |> Gen.integral
                       |> List.replicate s.Rank
                       |> ListGen.sequence
-                    Serilog.Log.Information("{Length}", lengths.[0])
+                    printfn "LENGTHS: %A" lengths
                     let product = lengths |> List.fold (*) 1
                     let! data =
                       autoInner<'a> config (incrementRecursionDepth typeof<'a>)

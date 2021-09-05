@@ -6,6 +6,7 @@ open Swensen.Unquote
 open Hedgehog
 open Xunit.Abstractions
 open Serilog
+open System.IO
 
 let checkWith tests = PropertyConfig.defaultConfig |> PropertyConfig.withTests tests |> Property.checkWith
 
@@ -823,17 +824,20 @@ let ``one-dimentional array shrinks correctly when empty disallowed`` () =
   //let rendered = Report.render report
   //test <@ rendered.Contains "[|1; 0|]" @>
 
+type Converter(output: ITestOutputHelper) =
+  inherit TextWriter()
+  override __.Encoding = stdout.Encoding
+  override __.WriteLine message =
+      output.WriteLine message
+  override __.Write message =
+      output.WriteLine message
 
 
 type Tests (output: ITestOutputHelper) =
+  do new Converter(output) |> Console.SetOut
   [<Fact>]
   member _.``tyson`` () =
-    Log.Logger <-
-      LoggerConfiguration()
-        .MinimumLevel.Error()
-        .WriteTo.TestOutput(output)
-        .CreateLogger()
-      :> ILogger
+    printfn "hi world"
     let property = property {
       let! array =
         { GenX.defaults with SeqRange = Range.constant 2 5 }
