@@ -797,3 +797,53 @@ let ``shuffle shrinks correctly`` () =
   let report = Property.report property
   let rendered = Report.render report
   test <@ rendered.Contains "[9; 0; 1; 2; 3; 4; 5; 6; 7; 8]" @>
+
+[<Fact>]
+let ``one-dimentional array shrinks correctly when empty allowed`` () =
+  let property = property {
+    let! array = GenX.auto<int []>
+    test <@ array.Length = 0 @>
+  }
+  let report = Property.report property
+  let rendered = Report.render report
+  test <@ rendered.Contains "[|0|]" @>
+
+[<Fact>]
+let ``one-dimentional array shrinks correctly when length must be 3`` () =
+  let property = property {
+    let! array =
+      { GenX.defaults with SeqRange = Range.constant 2 5 }
+      |> GenX.autoWith<int []>
+    test <@ array.Length <> 3 || 1 <> array.[0] @>
+  }
+  let config =
+    PropertyConfig.defaultConfig
+    |> PropertyConfig.withTests 1_000_000<tests>
+  let report = Property.reportWith config property
+  let rendered = Report.render report
+  test <@ rendered.Contains "[|1; 0; 0|]" @>
+
+[<Fact>]
+let ``two-dimentional array shrinks correctly when empty allowed`` () =
+  let property = property {
+    let! array = GenX.auto<int [,]>
+    test <@ array.Length = 0 @>
+  }
+  let report = Property.report property
+  let rendered = Report.render report
+  test <@ rendered.Contains "[[0]]" @>
+
+[<Fact>]
+let ``two-dimentional array shrinks correctly when empty disallowed`` () =
+  let property = property {
+    let! array =
+      { GenX.defaults with SeqRange = Range.constant 1 5 }
+      |> GenX.autoWith<int [,]>
+    test <@ array.Length <> 3 || array.GetLength 1 <> 3 || 1 <> array.[0,0] @>
+  }
+  let config =
+    PropertyConfig.defaultConfig
+    |> PropertyConfig.withTests 1_000_000<tests>
+  let report = Property.reportWith config property
+  let rendered = Report.render report
+  test <@ rendered.Contains "[[1; 0; 0]]" @>
