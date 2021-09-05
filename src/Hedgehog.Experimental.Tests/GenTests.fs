@@ -4,6 +4,8 @@ open System
 open Xunit
 open Swensen.Unquote
 open Hedgehog
+open Xunit.Abstractions
+open Serilog
 
 let checkWith tests = PropertyConfig.defaultConfig |> PropertyConfig.withTests tests |> Property.checkWith
 
@@ -820,6 +822,28 @@ let ``one-dimentional array shrinks correctly when empty disallowed`` () =
   //let report = Property.report property
   //let rendered = Report.render report
   //test <@ rendered.Contains "[|1; 0|]" @>
+
+
+
+type Tests (output: ITestOutputHelper) =
+  [<Fact>]
+  member _.``tyson`` () =
+    Log.Logger <-
+      LoggerConfiguration()
+        .MinimumLevel.Error()
+        .WriteTo.TestOutput(output)
+        .CreateLogger()
+      :> ILogger
+    let property = property {
+      let! array =
+        { GenX.defaults with SeqRange = Range.constant 2 5 }
+        |> GenX.autoWith<int []>
+      test <@ 1 <> array.[0] @>
+    }
+    Property.check property
+    //let report = Property.report property
+    //let rendered = Report.render report
+    //test <@ rendered.Contains "[|1; 0|]" @>
 
 [<Fact>]
 let ``two-dimentional array shrinks correctly when empty allowed`` () =
