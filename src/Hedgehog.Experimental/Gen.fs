@@ -423,17 +423,46 @@ module GenX =
                 else
                   Gen.constant (None: 'a option) |> wrap}
 
-        | Shape.Array s when s.Rank = 1 ->
+        | Shape.Array s ->
             s.Element.Accept {
               new ITypeVisitor<Gen<'a>> with
               member __.Visit<'a> () =
+                let newMultidimentionalArray (lenghts: int list) =
+                  let array = lenghts |> Array.ofList
+                  System.Array.CreateInstance (typeof<'a>, array)
+                let setMultidimentionalArrayEntries (data: 'a seq) maxIndices (array: Array) =
+                  let currentIndices = Array.create (List.length maxIndices) 0
+                  use en = data.GetEnumerator ()
+                  let rec loop currentIndicesIndex = function
+                    | [] ->
+                        en.MoveNext () |> ignore
+                        array.SetValue(en.Current, currentIndices)
+                    | currentMaxIndex :: remaningMaxIndices ->
+                        for i in 0..currentMaxIndex - 1 do
+                          currentIndices.[currentIndicesIndex] <- i
+                          loop (currentIndicesIndex + 1) remaningMaxIndices
+                  loop 0 maxIndices
                 if canRecurse typeof<'a> then
-                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap
+                  gen {
+                    let! lengths =
+                      config.SeqRange
+                      |> Gen.integral
+                      |> List.replicate s.Rank
+                      |> ListGen.sequence
+                    let product = lengths |> List.fold (*) 1
+                    let! data =
+                      autoInner<'a> config (incrementRecursionDepth typeof<'a>)
+                      |> Gen.list (Range.singleton product)
+                    let array = newMultidimentionalArray lengths
+                    array |> setMultidimentionalArrayEntries data lengths
+                    return array |> unbox
+                  }
                 else
-                  Gen.constant ([||]: 'a array) |> wrap}
-
-        | Shape.Array _ ->
-            raise (NotSupportedException("Can only generate arrays of rank 1"))
+                  0
+                  |> List.replicate s.Rank
+                  |> newMultidimentionalArray
+                  |> unbox
+                  |> Gen.constant }
 
         | Shape.FSharpList s ->
             s.Element.Accept {
