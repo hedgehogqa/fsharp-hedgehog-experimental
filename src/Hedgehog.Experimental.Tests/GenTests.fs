@@ -809,19 +809,19 @@ let ``one-dimentional array shrinks correctly when empty allowed`` () =
   test <@ rendered.Contains "[|0|]" @>
 
 [<Fact>]
-let ``one-dimentional array shrinks correctly when length must be 3`` () =
+let ``one-dimentional array shrinks correctly when empty disallowed`` () =
   let property = property {
     let! array =
       { GenX.defaults with SeqRange = Range.constant 2 5 }
       |> GenX.autoWith<int []>
-    test <@ array.Length <> 3 || 1 <> array.[0] @>
+    test <@ 1 <> array.[0] @>
   }
   let config =
     PropertyConfig.defaultConfig
     |> PropertyConfig.withTests 1_000_000<tests>
   let report = Property.reportWith config property
   let rendered = Report.render report
-  test <@ rendered.Contains "[|1; 0; 0|]" @>
+  test <@ rendered.Contains "[|1; 0" @>
 
 [<Fact>]
 let ``two-dimentional array shrinks correctly when empty allowed`` () =
