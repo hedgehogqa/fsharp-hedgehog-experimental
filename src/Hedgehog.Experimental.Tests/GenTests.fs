@@ -741,7 +741,10 @@ let ``auto of CLI mutable shrinks correctly`` () =
     let! value = GenX.auto<MyCliMutable>
     test <@ not (value.String.Contains('b')) @>
   }
-  let report = Property.report property
+  let config =
+    PropertyConfig.defaultConfig
+    |> PropertyConfig.withTests 1_000_000<tests>
+  let report = Property.reportWith config property
   let rendered = Report.render report
   test <@ rendered.Contains "String = b; Int = 0" @>
 
