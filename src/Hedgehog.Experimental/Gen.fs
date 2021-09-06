@@ -427,9 +427,9 @@ module GenX =
             s.Element.Accept {
               new ITypeVisitor<Gen<'a>> with
               member __.Visit<'a> () =
-                let newMultidimentionalArray (lenghts: int list) =
-                  let array = lenghts |> Array.ofList
-                  System.Array.CreateInstance (typeof<'a>, array)
+                let newMultidimensionalArray (lengths: int list) =
+                  let array = lengths |> Array.ofList
+                  Array.CreateInstance (typeof<'a>, array)
                 let setMultidimentionalArrayEntries (data: 'a seq) maxIndices (array: Array) =
                   let currentIndices = Array.create (List.length maxIndices) 0
                   use en = data.GetEnumerator ()
