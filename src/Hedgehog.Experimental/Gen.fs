@@ -449,10 +449,10 @@ module GenX =
                       |> Gen.integral
                       |> List.replicate s.Rank
                       |> ListGen.sequence
-                    let product = lengths |> List.fold (*) 1
+                    let elementCount = lengths |> List.fold (*) 1
                     let! data =
                       autoInner<'a> config (incrementRecursionDepth typeof<'a>)
-                      |> Gen.list (Range.singleton product)
+                      |> Gen.list (Range.singleton elementCount)
                     let array = newMultidimentionalArray lengths
                     array |> setMultidimentionalArrayEntries data lengths
                     return array |> unbox
