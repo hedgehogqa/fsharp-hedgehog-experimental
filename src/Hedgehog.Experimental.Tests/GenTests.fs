@@ -842,14 +842,16 @@ let ``two-dimentional array shrinks correctly when empty disallowed`` () =
     let! array =
       { GenX.defaults with SeqRange = Range.constant 1 5 }
       |> GenX.autoWith<int [,]>
-    test <@ array.GetLength 0 <> 1 || array.GetLength 1 <> 3 || 1 <> array.[0,0] @>
+    test <@ 1 <> array.[0,0] @>
   }
   let config =
     PropertyConfig.defaultConfig
     |> PropertyConfig.withTests 1_000_000<tests>
   let report = Property.reportWith config property
   let rendered = Report.render report
-  test <@ rendered.Contains "[[1; 0; 0]]" @>
+  test <@ rendered.Contains "[[1; 0" ||
+          rendered.Contains "[[1]\n [0]" ||
+          rendered.Contains "[[1]]"@>
 
 [<Fact>]
 let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
