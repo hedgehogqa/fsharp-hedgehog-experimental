@@ -430,17 +430,17 @@ module GenX =
                 let newMultidimensionalArray (lengths: int list) =
                   let array = lengths |> Array.ofList
                   Array.CreateInstance (typeof<'a>, array)
-                let setMultidimentionalArrayEntries (data: 'a seq) maxIndices (array: Array) =
+                let setMultidimensionalArrayEntries (data: 'a seq) maxIndices (array: Array) =
                   let currentIndices = Array.create (List.length maxIndices) 0
                   use en = data.GetEnumerator ()
                   let rec loop currentIndicesIndex = function
                     | [] ->
                         en.MoveNext () |> ignore
                         array.SetValue(en.Current, currentIndices)
-                    | currentMaxIndex :: remaningMaxIndices ->
+                    | currentMaxIndex :: remainingMaxIndices ->
                         for i in 0..currentMaxIndex - 1 do
                           currentIndices.[currentIndicesIndex] <- i
-                          loop (currentIndicesIndex + 1) remaningMaxIndices
+                          loop (currentIndicesIndex + 1) remainingMaxIndices
                   loop 0 maxIndices
                 if canRecurse typeof<'a> then
                   gen {
@@ -453,14 +453,14 @@ module GenX =
                     let! data =
                       autoInner<'a> config (incrementRecursionDepth typeof<'a>)
                       |> Gen.list (Range.singleton elementCount)
-                    let array = newMultidimentionalArray lengths
-                    array |> setMultidimentionalArrayEntries data lengths
+                    let array = newMultidimensionalArray lengths
+                    array |> setMultidimensionalArrayEntries data lengths
                     return array |> unbox
                   }
                 else
                   0
                   |> List.replicate s.Rank
-                  |> newMultidimentionalArray
+                  |> newMultidimensionalArray
                   |> unbox
                   |> Gen.constant }
 
