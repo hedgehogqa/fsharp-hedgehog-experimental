@@ -430,7 +430,8 @@ module GenX =
                 let newMultidimensionalArray (lengths: int list) =
                   let array = lengths |> Array.ofList
                   Array.CreateInstance (typeof<'a>, array)
-                let setMultidimensionalArrayEntries (data: 'a seq) maxIndices (array: Array) =
+                let newMultidimensionalArrayWith (data: 'a seq) maxIndices =
+                  let array = newMultidimensionalArray maxIndices
                   let currentIndices = Array.create (List.length maxIndices) 0
                   use en = data.GetEnumerator ()
                   let rec loop currentIndicesIndex = function
@@ -442,6 +443,7 @@ module GenX =
                           currentIndices.[currentIndicesIndex] <- i
                           loop (currentIndicesIndex + 1) remainingMaxIndices
                   loop 0 maxIndices
+                  array
                 if canRecurse typeof<'a> then
                   gen {
                     let! maxIndices =
@@ -453,9 +455,7 @@ module GenX =
                     let! data =
                       autoInner<'a> config (incrementRecursionDepth typeof<'a>)
                       |> Gen.list (Range.singleton elementCount)
-                    let array = newMultidimensionalArray maxIndices
-                    array |> setMultidimensionalArrayEntries data maxIndices
-                    return array |> unbox
+                    return newMultidimensionalArrayWith data maxIndices |> unbox
                   }
                 else
                   0
