@@ -709,6 +709,16 @@ let ``auto uses specified overrides`` () =
 
 
 module ShrinkTests =
+
+  // We need to hit an error case in order to test shrinking. That error case may be uncommon.
+  // We therefore run 1 million tests to increase the probability of hitting an error case.
+  let render property =
+    let config =
+      PropertyConfig.defaultConfig
+      |> PropertyConfig.withTests 1_000_000<tests>
+    Property.reportWith config property
+    |> Report.render
+
   type MyRecord =
     { String: string
       Int: int }
@@ -719,8 +729,7 @@ module ShrinkTests =
       let! value = GenX.auto<MyRecord>
       test <@ not (value.String.Contains('b')) @>
     }
-    let report = Property.report property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "{String = \"b\";\n Int = 0;}" @>
 
 
@@ -742,11 +751,7 @@ module ShrinkTests =
       let! value = GenX.auto<MyCliMutable>
       test <@ not (value.String.Contains('b')) @>
     }
-    let config =
-      PropertyConfig.defaultConfig
-      |> PropertyConfig.withTests 1_000_000<tests>
-    let report = Property.reportWith config property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "String = b; Int = 0" @>
 
 
@@ -760,8 +765,7 @@ module ShrinkTests =
       let! MyDu.Case1(s, i) = GenX.auto<MyDu>
       test <@ not (s.Contains('b')) @>
     }
-    let report = Property.report property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "Case1 (\"b\",0)" @>
 
 
@@ -771,8 +775,7 @@ module ShrinkTests =
       let! (s, _) = GenX.auto<string * int>
       test <@ not (s.Contains('b')) @>
     }
-    let report = Property.report property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "(\"b\", 0)" @>
 
   [<Fact>]
@@ -781,8 +784,7 @@ module ShrinkTests =
       let! value = GenX.shuffleCase "abcdefg"
       test <@ not (value.StartsWith "A") @>
     }
-    let report = Property.report property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "\"Abcdefg\"" @>
 
   [<Fact>]
@@ -798,8 +800,7 @@ module ShrinkTests =
         |> GenX.shuffle
       test <@ nMinus1 <> value.Head @>
     }
-    let report = Property.report property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "[9; 0; 1; 2; 3; 4; 5; 6; 7; 8]" @>
 
   [<Fact>]
@@ -808,8 +809,7 @@ module ShrinkTests =
       let! array = GenX.auto<int []>
       test <@ array.Length = 0 @>
     }
-    let report = Property.report property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "[|0|]" @>
 
   [<Fact>]
@@ -820,11 +820,7 @@ module ShrinkTests =
         |> GenX.autoWith<int []>
       test <@ 1 <> array.[0] @>
     }
-    let config =
-      PropertyConfig.defaultConfig
-      |> PropertyConfig.withTests 1_000_000<tests>
-    let report = Property.reportWith config property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "[|1; 0" @>
 
   [<Fact>]
@@ -833,8 +829,7 @@ module ShrinkTests =
       let! array = GenX.auto<int [,]>
       test <@ array.Length = 0 @>
     }
-    let report = Property.report property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "[[0]]" @>
 
   [<Fact>]
@@ -845,11 +840,7 @@ module ShrinkTests =
         |> GenX.autoWith<int [,]>
       test <@ 1 <> array.[0,0] @>
     }
-    let config =
-      PropertyConfig.defaultConfig
-      |> PropertyConfig.withTests 1_000_000<tests>
-    let report = Property.reportWith config property
-    let rendered = Report.render report
+    let rendered = render property
     test <@ rendered.Contains "[[1; 0" ||
             rendered.Contains "[[1]\n [0]" ||
             rendered.Contains "[[1]]"@>
