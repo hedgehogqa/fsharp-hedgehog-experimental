@@ -383,6 +383,27 @@ module GenX =
     |> AutoGenConfig.addGenerator (Gen.dateTime dateTimeRange |> Gen.map DateTimeOffset)
     |> AutoGenConfig.addGenerator uri
 
+  module internal MultidimensionalArray =
+    
+    let createWithDefaultEntries<'a> (lengths: int list) =
+      let array = lengths |> Array.ofList
+      Array.CreateInstance (typeof<'a>, array)
+
+    let createWithGivenEntries<'a> (data: 'a seq) lengths =
+      let array = createWithDefaultEntries<'a> lengths
+      let currentIndices = Array.create (List.length lengths) 0
+      use en = data.GetEnumerator ()
+      let rec loop currentDimensionIndex = function
+        | [] ->
+            en.MoveNext () |> ignore
+            array.SetValue(en.Current, currentIndices)
+        | currentLength :: remainingLengths ->
+            for i in 0..currentLength - 1 do
+              currentIndices.[currentDimensionIndex] <- i
+              loop (currentDimensionIndex + 1) remainingLengths
+      loop 0 lengths
+      array
+
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
     let canRecurse (t: Type) =
@@ -427,23 +448,6 @@ module GenX =
             s.Element.Accept {
               new ITypeVisitor<Gen<'a>> with
               member __.Visit<'a> () =
-                let newMultidimensionalArray (lengths: int list) =
-                  let array = lengths |> Array.ofList
-                  Array.CreateInstance (typeof<'a>, array)
-                let newMultidimensionalArrayWith (data: 'a seq) lengths =
-                  let array = newMultidimensionalArray lengths
-                  let currentIndices = Array.create (List.length lengths) 0
-                  use en = data.GetEnumerator ()
-                  let rec loop currentDimensionIndex = function
-                    | [] ->
-                        en.MoveNext () |> ignore
-                        array.SetValue(en.Current, currentIndices)
-                    | currentLength :: remainingLengths ->
-                        for i in 0..currentLength - 1 do
-                          currentIndices.[currentDimensionIndex] <- i
-                          loop (currentDimensionIndex + 1) remainingLengths
-                  loop 0 lengths
-                  array
                 if canRecurse typeof<'a> then
                   gen {
                     let! lengths =
@@ -455,12 +459,12 @@ module GenX =
                     let! data =
                       autoInner<'a> config (incrementRecursionDepth typeof<'a>)
                       |> Gen.list (Range.singleton elementCount)
-                    return newMultidimensionalArrayWith data lengths |> unbox
+                    return MultidimensionalArray.createWithGivenEntries<'a> data lengths |> unbox
                   }
                 else
                   0
                   |> List.replicate s.Rank
-                  |> newMultidimensionalArray
+                  |> MultidimensionalArray.createWithDefaultEntries<'a>
                   |> unbox
                   |> Gen.constant }
 

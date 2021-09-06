@@ -850,3 +850,20 @@ let ``two-dimentional array shrinks correctly when empty disallowed`` () =
   let report = Property.reportWith config property
   let rendered = Report.render report
   test <@ rendered.Contains "[[1; 0; 0]]" @>
+
+[<Fact>]
+let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
+  let data = [ 0; 1; 2; 3 ]
+  let lengths = [ 2; 2 ]
+
+  let array : int [,] =
+    GenX.MultidimensionalArray.createWithGivenEntries data lengths
+    |> unbox
+
+  <@
+    array.[0, 0] = 0
+    && array.[0, 1] = 1
+    && array.[1, 0] = 2
+    && array.[1, 1] = 3
+  @>
+  |> test
