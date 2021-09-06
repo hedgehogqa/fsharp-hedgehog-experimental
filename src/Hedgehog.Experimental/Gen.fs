@@ -430,32 +430,32 @@ module GenX =
                 let newMultidimensionalArray (lengths: int list) =
                   let array = lengths |> Array.ofList
                   Array.CreateInstance (typeof<'a>, array)
-                let newMultidimensionalArrayWith (data: 'a seq) maxIndices =
-                  let array = newMultidimensionalArray maxIndices
-                  let currentIndices = Array.create (List.length maxIndices) 0
+                let newMultidimensionalArrayWith (data: 'a seq) lengths =
+                  let array = newMultidimensionalArray lengths
+                  let currentIndices = Array.create (List.length lengths) 0
                   use en = data.GetEnumerator ()
-                  let rec loop currentIndicesIndex = function
+                  let rec loop currentDimensionIndex = function
                     | [] ->
                         en.MoveNext () |> ignore
                         array.SetValue(en.Current, currentIndices)
-                    | currentMaxIndex :: remainingMaxIndices ->
-                        for i in 0..currentMaxIndex - 1 do
-                          currentIndices.[currentIndicesIndex] <- i
-                          loop (currentIndicesIndex + 1) remainingMaxIndices
-                  loop 0 maxIndices
+                    | currentLength :: remainingLengths ->
+                        for i in 0..currentLength - 1 do
+                          currentIndices.[currentDimensionIndex] <- i
+                          loop (currentDimensionIndex + 1) remainingLengths
+                  loop 0 lengths
                   array
                 if canRecurse typeof<'a> then
                   gen {
-                    let! maxIndices =
+                    let! lengths =
                       config.SeqRange
                       |> Gen.integral
                       |> List.replicate s.Rank
                       |> ListGen.sequence
-                    let elementCount = maxIndices |> List.fold (*) 1
+                    let elementCount = lengths |> List.fold (*) 1
                     let! data =
                       autoInner<'a> config (incrementRecursionDepth typeof<'a>)
                       |> Gen.list (Range.singleton elementCount)
-                    return newMultidimensionalArrayWith data maxIndices |> unbox
+                    return newMultidimensionalArrayWith data lengths |> unbox
                   }
                 else
                   0
