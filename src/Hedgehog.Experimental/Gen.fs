@@ -444,17 +444,17 @@ module GenX =
                   loop 0 maxIndices
                 if canRecurse typeof<'a> then
                   gen {
-                    let! lengths =
+                    let! maxIndices =
                       config.SeqRange
                       |> Gen.integral
                       |> List.replicate s.Rank
                       |> ListGen.sequence
-                    let elementCount = lengths |> List.fold (*) 1
+                    let elementCount = maxIndices |> List.fold (*) 1
                     let! data =
                       autoInner<'a> config (incrementRecursionDepth typeof<'a>)
                       |> Gen.list (Range.singleton elementCount)
-                    let array = newMultidimensionalArray lengths
-                    array |> setMultidimensionalArrayEntries data lengths
+                    let array = newMultidimensionalArray maxIndices
+                    array |> setMultidimensionalArrayEntries data maxIndices
                     return array |> unbox
                   }
                 else
