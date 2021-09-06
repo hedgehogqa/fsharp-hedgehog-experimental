@@ -839,7 +839,7 @@ let ``two-dimentional array shrinks correctly when empty disallowed`` () =
     let! array =
       { GenX.defaults with SeqRange = Range.constant 1 5 }
       |> GenX.autoWith<int [,]>
-    test <@ array.Length <> 3 || array.GetLength 1 <> 3 || 1 <> array.[0,0] @>
+    test <@ array.GetLength 0 <> 1 || array.GetLength 1 <> 3 || 1 <> array.[0,0] @>
   }
   let config =
     PropertyConfig.defaultConfig
