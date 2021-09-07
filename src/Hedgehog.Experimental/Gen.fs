@@ -383,6 +383,27 @@ module GenX =
     |> AutoGenConfig.addGenerator (Gen.dateTime dateTimeRange |> Gen.map DateTimeOffset)
     |> AutoGenConfig.addGenerator uri
 
+  module internal MultidimensionalArray =
+    
+    let createWithDefaultEntries<'a> (lengths: int list) =
+      let array = lengths |> Array.ofList
+      Array.CreateInstance (typeof<'a>, array)
+
+    let createWithGivenEntries<'a> (data: 'a seq) lengths =
+      let array = createWithDefaultEntries<'a> lengths
+      let currentIndices = Array.create (List.length lengths) 0
+      use en = data.GetEnumerator ()
+      let rec loop currentDimensionIndex = function
+        | [] ->
+            en.MoveNext () |> ignore
+            array.SetValue(en.Current, currentIndices)
+        | currentLength :: remainingLengths ->
+            for i in 0..currentLength - 1 do
+              currentIndices.[currentDimensionIndex] <- i
+              loop (currentDimensionIndex + 1) remainingLengths
+      loop 0 lengths
+      array
+
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
     let canRecurse (t: Type) =
@@ -423,17 +444,29 @@ module GenX =
                 else
                   Gen.constant (None: 'a option) |> wrap}
 
-        | Shape.Array s when s.Rank = 1 ->
+        | Shape.Array s ->
             s.Element.Accept {
               new ITypeVisitor<Gen<'a>> with
               member __.Visit<'a> () =
                 if canRecurse typeof<'a> then
-                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.array config.SeqRange |> wrap
+                  gen {
+                    let! lengths =
+                      config.SeqRange
+                      |> Gen.integral
+                      |> List.replicate s.Rank
+                      |> ListGen.sequence
+                    let elementCount = lengths |> List.fold (*) 1
+                    let! data =
+                      autoInner<'a> config (incrementRecursionDepth typeof<'a>)
+                      |> Gen.list (Range.singleton elementCount)
+                    return MultidimensionalArray.createWithGivenEntries<'a> data lengths |> unbox
+                  }
                 else
-                  Gen.constant ([||]: 'a array) |> wrap}
-
-        | Shape.Array _ ->
-            raise (NotSupportedException("Can only generate arrays of rank 1"))
+                  0
+                  |> List.replicate s.Rank
+                  |> MultidimensionalArray.createWithDefaultEntries<'a>
+                  |> unbox
+                  |> Gen.constant }
 
         | Shape.FSharpList s ->
             s.Element.Accept {

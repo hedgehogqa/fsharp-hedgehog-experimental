@@ -22,6 +22,9 @@
       <Pack>True</Pack>
       <PackagePath></PackagePath>
     </None>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Hedgehog.Experimental.Tests</_Parameter1>
+    </AssemblyAttribute>
     <Compile Include="Gen.fs" />
   </ItemGroup>
 

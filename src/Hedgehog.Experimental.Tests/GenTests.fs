@@ -708,92 +708,156 @@ let ``auto uses specified overrides`` () =
   }
 
 
-type MyRecord =
-  { String: string
-    Int: int }
+module ShrinkTests =
+
+  // We need to hit an error case in order to test shrinking. That error case may be uncommon.
+  // We therefore run 1 million tests to increase the probability of hitting an error case.
+  let render property =
+    let config =
+      PropertyConfig.defaultConfig
+      |> PropertyConfig.withTests 1_000_000<tests>
+    Property.reportWith config property
+    |> Report.render
+
+  type MyRecord =
+    { String: string
+      Int: int }
+
+  [<Fact>]
+  let ``auto of record shrinks correctly`` () =
+    let property = property {
+      let! value = GenX.auto<MyRecord>
+      test <@ not (value.String.Contains('b')) @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "{String = \"b\";\n Int = 0;}" @>
+
+
+  type MyCliMutable() =
+    let mutable myString = ""
+    let mutable myInt = 0
+    member _.String
+      with get () = myString
+      and set value = myString <- value
+    member _.Int
+      with get () = myInt
+      and set value = myInt <- value
+    override _.ToString() =
+      "String = " + myString + "; Int = " + myInt.ToString()
+
+  [<Fact>]
+  let ``auto of CLI mutable shrinks correctly`` () =
+    let property = property {
+      let! value = GenX.auto<MyCliMutable>
+      test <@ not (value.String.Contains('b')) @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "String = b; Int = 0" @>
+
+
+  [<RequireQualifiedAccess>]
+  type MyDu =
+    | Case1 of String * int
+
+  [<Fact>]
+  let ``auto of discriminated union shrinks correctly`` () =
+    let property = property {
+      let! MyDu.Case1(s, i) = GenX.auto<MyDu>
+      test <@ not (s.Contains('b')) @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "Case1 (\"b\",0)" @>
+
+
+  [<Fact>]
+  let ``auto of tuple shrinks correctly`` () =
+    let property = property {
+      let! (s, _) = GenX.auto<string * int>
+      test <@ not (s.Contains('b')) @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "(\"b\", 0)" @>
+
+  [<Fact>]
+  let ``shuffleCase shrinks correctly`` () =
+    let property = property {
+      let! value = GenX.shuffleCase "abcdefg"
+      test <@ not (value.StartsWith "A") @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "\"Abcdefg\"" @>
+
+  [<Fact>]
+  let ``shuffle shrinks correctly`` () =
+    let property = property {
+      let n = 10
+      let nMinus1 = n - 1
+      let! value =
+        ()
+        |> Seq.replicate n
+        |> Seq.mapi (fun i _ -> i)
+        |> Seq.toList
+        |> GenX.shuffle
+      test <@ nMinus1 <> value.Head @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "[9; 0; 1; 2; 3; 4; 5; 6; 7; 8]" @>
+
+  [<Fact>]
+  let ``one-dimentional array shrinks correctly when empty allowed`` () =
+    let property = property {
+      let! array = GenX.auto<int []>
+      test <@ array.Length = 0 @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "[|0|]" @>
+
+  [<Fact>]
+  let ``one-dimentional array shrinks correctly when empty disallowed`` () =
+    let property = property {
+      let! array =
+        { GenX.defaults with SeqRange = Range.constant 2 5 }
+        |> GenX.autoWith<int []>
+      test <@ 1 <> array.[0] @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "[|1; 0" @>
+
+  [<Fact>]
+  let ``two-dimentional array shrinks correctly when empty allowed`` () =
+    let property = property {
+      let! array = GenX.auto<int [,]>
+      test <@ array.Length = 0 @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "[[0]]" @>
+
+  [<Fact>]
+  let ``two-dimentional array shrinks correctly when empty disallowed`` () =
+    let property = property {
+      let! array =
+        { GenX.defaults with SeqRange = Range.constant 1 5 }
+        |> GenX.autoWith<int [,]>
+      test <@ 1 <> array.[0,0] @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "[[1; 0" ||
+            rendered.Contains "[[1]\n [0]" ||
+            rendered.Contains "[[1]]"@>
 
 [<Fact>]
-let ``auto of record shrinks correctly`` () =
-  let property = property {
-    let! value = GenX.auto<MyRecord>
-    test <@ not (value.String.Contains('b')) @>
-  }
-  let report = Property.report property
-  let rendered = Report.render report
-  test <@ rendered.Contains "{String = \"b\";\n Int = 0;}" @>
+let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
+  let data = [ 0; 1; 2; 3 ]
+  let lengths = [ 2; 2 ]
 
+  let array : int [,] =
+    GenX.MultidimensionalArray.createWithGivenEntries data lengths
+    |> unbox
 
-type MyCliMutable() =
-  let mutable myString = ""
-  let mutable myInt = 0
-  member _.String
-    with get () = myString
-    and set value = myString <- value
-  member _.Int
-    with get () = myInt
-    and set value = myInt <- value
-  override _.ToString() =
-    "String = " + myString + "; Int = " + myInt.ToString()
-
-[<Fact>]
-let ``auto of CLI mutable shrinks correctly`` () =
-  let property = property {
-    let! value = GenX.auto<MyCliMutable>
-    test <@ not (value.String.Contains('b')) @>
-  }
-  let report = Property.report property
-  let rendered = Report.render report
-  test <@ rendered.Contains "String = b; Int = 0" @>
-
-
-[<RequireQualifiedAccess>]
-type MyDu =
-  | Case1 of String * int
-
-[<Fact>]
-let ``auto of discriminated union shrinks correctly`` () =
-  let property = property {
-    let! MyDu.Case1(s, i) = GenX.auto<MyDu>
-    test <@ not (s.Contains('b')) @>
-  }
-  let report = Property.report property
-  let rendered = Report.render report
-  test <@ rendered.Contains "Case1 (\"b\",0)" @>
-
-
-[<Fact>]
-let ``auto of tuple shrinks correctly`` () =
-  let property = property {
-    let! (s, _) = GenX.auto<string * int>
-    test <@ not (s.Contains('b')) @>
-  }
-  let report = Property.report property
-  let rendered = Report.render report
-  test <@ rendered.Contains "(\"b\", 0)" @>
-
-[<Fact>]
-let ``shuffleCase shrinks correctly`` () =
-  let property = property {
-    let! value = GenX.shuffleCase "abcdefg"
-    test <@ not (value.StartsWith "A") @>
-  }
-  let report = Property.report property
-  let rendered = Report.render report
-  test <@ rendered.Contains "\"Abcdefg\"" @>
-
-[<Fact>]
-let ``shuffle shrinks correctly`` () =
-  let property = property {
-    let n = 10
-    let nMinus1 = n - 1
-    let! value =
-      ()
-      |> Seq.replicate n
-      |> Seq.mapi (fun i _ -> i)
-      |> Seq.toList
-      |> GenX.shuffle
-    test <@ nMinus1 <> value.Head @>
-  }
-  let report = Property.report property
-  let rendered = Report.render report
-  test <@ rendered.Contains "[9; 0; 1; 2; 3; 4; 5; 6; 7; 8]" @>
+  <@
+    array.[0, 0] = 0
+    && array.[0, 1] = 1
+    && array.[1, 0] = 2
+    && array.[1, 1] = 3
+  @>
+  |> test
