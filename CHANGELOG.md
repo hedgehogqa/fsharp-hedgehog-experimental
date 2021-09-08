@@ -4,6 +4,7 @@
 * The `Gen.auto` cases for records, classes, discriminated unions, and tuples now shrink correctly.
 * The function `shuffleCase` now shrinks correctly
 * The function `shuffle` now shrinks correctly
+* Added support for multidimensional arrays to `GenX.auto`
 
 ### 0.4.0 (2021-02-07)
 
