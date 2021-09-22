@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Hedgehog" Version="0.10.0" />
+    <PackageReference Include="Hedgehog" Version="0.11.0" />
     <PackageReference Include="TypeShape" Version="9.0.0" />
   </ItemGroup>
 
