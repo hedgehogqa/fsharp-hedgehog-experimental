@@ -18,7 +18,7 @@ let ``uri generates valid URIs`` () =
 let ``shuffle does not add or remove elements`` () =
     Property.check <| property {
         let! xs =
-            Gen.int (Range.constantFrom 0 -100 100)
+            Gen.int32 (Range.constantFrom 0 -100 100)
             |> Gen.list (Range.linear 2 10)
         let! shuffled = xs |> GenX.shuffle
         test <@ List.sort xs = List.sort shuffled @>
@@ -28,7 +28,7 @@ let ``shuffle does not add or remove elements`` () =
 let ``shuffle creates random permutations of the input list`` () =
     checkWith 1<tests> <| property {
         let! xs =
-            Gen.int (Range.constantFrom 0 -100 100)
+            Gen.int32 (Range.constantFrom 0 -100 100)
             |> Gen.list (Range.singleton 10)
             |> Gen.filter (fun l -> (List.distinct l).Length > 5)
         let! permutations = xs |> GenX.shuffle |> Gen.list (Range.singleton 100)
@@ -108,16 +108,16 @@ let ``noNull does not generate nulls`` () =
 [<Fact>]
 let ``notEqualTo does not generate a value equal to another value`` () =
     Property.check <| property {
-        let! x = Gen.int (Range.constant 1 5)
-        let! y = Gen.int (Range.constant 1 5) |> GenX.notEqualTo x
+        let! x = Gen.int32 (Range.constant 1 5)
+        let! y = Gen.int32 (Range.constant 1 5) |> GenX.notEqualTo x
         x <>! y
     }
 
 [<Fact>]
 let ``notEqualToOpt does not generate a value equal to another option-wrapped value`` () =
     Property.check <| property {
-        let! xOpt = Gen.int (Range.constant 1 5) |> Gen.option
-        let! y = Gen.int (Range.constant 1 5) |> GenX.notEqualToOpt xOpt
+        let! xOpt = Gen.int32 (Range.constant 1 5) |> Gen.option
+        let! y = Gen.int32 (Range.constant 1 5) |> GenX.notEqualToOpt xOpt
         test <@ match xOpt with
                 | Some x -> x <> y
                 | None -> true @>
@@ -127,18 +127,18 @@ let ``notEqualToOpt does not generate a value equal to another option-wrapped va
 let ``notIn generates element that is not in list`` () =
     Property.check <| property {
         let! xs =
-            Gen.int (Range.linearFrom 0 -100 100)
+            Gen.int32 (Range.linearFrom 0 -100 100)
             |> Gen.list (Range.linear 1 10)
-        let! x = Gen.int (Range.linearFrom 0 -100 100) |> GenX.notIn xs
+        let! x = Gen.int32 (Range.linearFrom 0 -100 100) |> GenX.notIn xs
         return not <| List.contains x xs
     }
 
 [<Fact>]
 let ``notContains generates list that does not contain element`` () =
     Property.check <| property {
-        let! x = Gen.int (Range.linearFrom 0 -100 100)
+        let! x = Gen.int32 (Range.linearFrom 0 -100 100)
         let! xs =
-            Gen.int (Range.linearFrom 0 -100 100)
+            Gen.int32 (Range.linearFrom 0 -100 100)
             |> Gen.list (Range.linear 1 10)
             |> GenX.notContains x
         return not <| List.contains x xs
@@ -147,9 +147,9 @@ let ``notContains generates list that does not contain element`` () =
 [<Fact>]
 let ``addElement generates a list with the specified element`` () =
     Property.check <| property {
-        let! x = Gen.int (Range.exponentialBounded ())
+        let! x = Gen.int32 (Range.exponentialBounded ())
         let! xs =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.list (Range.linear 0 10)
             |> GenX.addElement x
         return List.contains x xs
@@ -159,7 +159,7 @@ let ``addElement generates a list with the specified element`` () =
 let ``sorted2 generates a sorted 2-tuple`` () =
     Property.check <| property {
         let! x1, x2 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple
             |> GenX.sorted2
         x1 <=! x2
@@ -169,7 +169,7 @@ let ``sorted2 generates a sorted 2-tuple`` () =
 let ``sorted3 generates a sorted 3-tuple`` () =
     Property.check <| property {
         let! x1, x2, x3 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple3
             |> GenX.sorted3
         x1 <=! x2
@@ -180,7 +180,7 @@ let ``sorted3 generates a sorted 3-tuple`` () =
 let ``sorted4 generates a sorted 4-tuple`` () =
     Property.check <| property {
         let! x1, x2, x3, x4 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple4
             |> GenX.sorted4
         x1 <=! x2
@@ -192,7 +192,7 @@ let ``sorted4 generates a sorted 4-tuple`` () =
 let ``distinct2 generates 2 non-equal elements`` () =
     Property.check <| property {
         let! x1, x2 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple
             |> GenX.distinct2
         [x1; x2] |> List.distinct =! [x1; x2]
@@ -202,7 +202,7 @@ let ``distinct2 generates 2 non-equal elements`` () =
 let ``distinct3 generates 3 non-equal elements`` () =
     Property.check <| property {
         let! x1, x2, x3 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple3
             |> GenX.distinct3
         [x1; x2; x3] |> List.distinct =! [x1; x2; x3]
@@ -212,7 +212,7 @@ let ``distinct3 generates 3 non-equal elements`` () =
 let ``distinct4 generates 4 non-equal elements`` () =
     Property.check <| property {
         let! x1, x2, x3, x4 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple4
             |> GenX.distinct4
         [x1; x2; x3; x4] |> List.distinct =! [x1; x2; x3; x4]
@@ -222,7 +222,7 @@ let ``distinct4 generates 4 non-equal elements`` () =
 let ``increasing2 generates a 2-tuple with strictly increasing elements`` () =
     Property.check <| property {
         let! x1, x2 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple
             |> GenX.increasing2
         x1 <! x2
@@ -232,7 +232,7 @@ let ``increasing2 generates a 2-tuple with strictly increasing elements`` () =
 let ``increasing3 generates a 3-tuple with strictly increasing elements`` () =
     Property.check <| property {
         let! x1, x2, x3 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple3
             |> GenX.increasing3
         x1 <! x2
@@ -243,7 +243,7 @@ let ``increasing3 generates a 3-tuple with strictly increasing elements`` () =
 let ``increasing4 generates a 4-tuple with strictly increasing elements`` () =
     Property.check <| property {
         let! x1, x2, x3, x4 =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.tuple4
             |> GenX.increasing4
         x1 <! x2
@@ -276,7 +276,7 @@ let ``dateInterval with negative interval generates increasing dates`` () =
 let ``withMapTo is defined for all elements in input list`` () =
     Property.check <| property {
         let! xs, f =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.list (Range.linear 1 50)
             |> GenX.withMapTo Gen.alphaNum
         xs |> List.map f |> ignore // Should not throw.
@@ -286,7 +286,7 @@ let ``withMapTo is defined for all elements in input list`` () =
 let ``withDistinctMapTo is defined for all elements in input list`` () =
     Property.check <| property {
         let! xs, f =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.list (Range.linear 1 50)
             |> GenX.withDistinctMapTo Gen.alphaNum
         xs |> List.map f |> ignore // Should not throw.
@@ -296,7 +296,7 @@ let ``withDistinctMapTo is defined for all elements in input list`` () =
 let ``withDistinctMapTo guarantees that distinct input values map to distinct output values`` () =
     Property.check <| property {
         let! xs, f =
-            Gen.int (Range.exponentialBounded ())
+            Gen.int32 (Range.exponentialBounded ())
             |> Gen.list (Range.linear 1 50)
             |> GenX.withDistinctMapTo Gen.alphaNum
         let xsDistinct = xs |> List.distinct
@@ -321,7 +321,7 @@ let ``auto with recursive option members does not cause stack overflow using def
 [<Fact>]
 let ``auto with recursive option members respects max recursion depth`` () =
     Property.check <| property {
-        let! depth = Gen.int <| Range.exponential 0 5
+        let! depth = Gen.int32 <| Range.exponential 0 5
         let! x = GenX.autoWith<RecOption> {GenX.defaults with RecursionDepth = depth}
         x.Depth <=! depth
     }
@@ -329,7 +329,7 @@ let ``auto with recursive option members respects max recursion depth`` () =
 [<Fact>]
 let ``auto with recursive option members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
-        let! depth = Gen.int <| Range.linear 1 5
+        let! depth = Gen.int32 <| Range.linear 1 5
         let! xs = GenX.autoWith<RecOption> {GenX.defaults with RecursionDepth = depth}
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
@@ -353,7 +353,7 @@ let ``auto with recursive array members does not cause stack overflow using defa
 [<Fact>]
 let ``auto with recursive array members respects max recursion depth`` () =
     Property.check <| property {
-        let! depth = Gen.int <| Range.exponential 0 5
+        let! depth = Gen.int32 <| Range.exponential 0 5
         let! x = GenX.autoWith<RecArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
         x.Depth <=! depth
     }
@@ -361,7 +361,7 @@ let ``auto with recursive array members respects max recursion depth`` () =
 [<Fact>]
 let ``auto with recursive array members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
-        let! depth = Gen.int <| Range.linear 1 5
+        let! depth = Gen.int32 <| Range.linear 1 5
         let! xs = GenX.autoWith<RecArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
@@ -385,7 +385,7 @@ let ``auto with recursive list members does not cause stack overflow using defau
 [<Fact>]
 let ``auto with recursive list members respects max recursion depth`` () =
     Property.check <| property {
-        let! depth = Gen.int <| Range.exponential 0 5
+        let! depth = Gen.int32 <| Range.exponential 0 5
         let! x = GenX.autoWith<RecList> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
         x.Depth <=! depth
     }
@@ -393,7 +393,7 @@ let ``auto with recursive list members respects max recursion depth`` () =
 [<Fact>]
 let ``auto with recursive list members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
-        let! depth = Gen.int <| Range.linear 1 5
+        let! depth = Gen.int32 <| Range.linear 1 5
         let! xs = GenX.autoWith<RecList> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
@@ -417,7 +417,7 @@ let ``auto with recursive set members does not cause stack overflow using defaul
 [<Fact>]
 let ``auto with recursive set members respects max recursion depth`` () =
     Property.check <| property {
-        let! depth = Gen.int <| Range.exponential 0 5
+        let! depth = Gen.int32 <| Range.exponential 0 5
         let! x = GenX.autoWith<RecSet> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
         x.Depth <=! depth
     }
@@ -425,7 +425,7 @@ let ``auto with recursive set members respects max recursion depth`` () =
 [<Fact>]
 let ``auto with recursive set members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
-        let! depth = Gen.int <| Range.linear 1 5
+        let! depth = Gen.int32 <| Range.linear 1 5
         let! xs = GenX.autoWith<RecSet> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
@@ -449,7 +449,7 @@ let ``auto with recursive map members does not cause stack overflow using defaul
 [<Fact>]
 let ``auto with recursive map members respects max recursion depth`` () =
     Property.check <| property {
-        let! depth = Gen.int <| Range.exponential 0 5
+        let! depth = Gen.int32 <| Range.exponential 0 5
         let! x = GenX.autoWith<RecMap> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
         x.Depth <=! depth
     }
@@ -457,7 +457,7 @@ let ``auto with recursive map members respects max recursion depth`` () =
 [<Fact>]
 let ``auto with recursive map members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
-        let! depth = Gen.int <| Range.linear 1 5
+        let! depth = Gen.int32 <| Range.linear 1 5
         let! xs = GenX.autoWith<RecMap> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
@@ -497,7 +497,7 @@ let ``auto with mutually recursive types does not cause stack overflow using def
 [<Fact>]
 let ``auto with mutually recursive types respects max recursion depth`` () =
     Property.check <| property {
-        let! depth = Gen.int <| Range.exponential 0 5
+        let! depth = Gen.int32 <| Range.exponential 0 5
         let! x1 = GenX.autoWith<MutuallyRecursive1> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
         let! x2 = GenX.autoWith<MutuallyRecursive2> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
         x1.Depth <=! depth
@@ -507,7 +507,7 @@ let ``auto with mutually recursive types respects max recursion depth`` () =
 [<Fact>]
 let ``auto with mutually recursive types generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
-        let! depth = Gen.int <| Range.linear 1 5
+        let! depth = Gen.int32 <| Range.linear 1 5
         let! xs1 = GenX.autoWith<MutuallyRecursive1> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
                   |> (Gen.list (Range.singleton 100))
         let! xs2 = GenX.autoWith<MutuallyRecursive2> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
@@ -682,7 +682,7 @@ type TypeWithoutAccessibleCtor private (state: int) =
 
 
 let myTypeGen = gen {
-    let! state = Gen.int <| Range.exponentialBounded ()
+    let! state = Gen.int32 <| Range.exponentialBounded ()
     return TypeWithoutAccessibleCtor.CustomConstructor state
 }
 
