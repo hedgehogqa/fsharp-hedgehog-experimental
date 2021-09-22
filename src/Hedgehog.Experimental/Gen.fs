@@ -62,7 +62,7 @@ module GenX =
       |> Gen.list (Range.linear 1 5)
       |> Gen.map (String.concat ".")
     let ipv4Gen =
-      Gen.int (Range.linear 0 255)
+      Gen.int32 (Range.linear 0 255)
       |> Gen.list (Range.constant 4 4)
       |> Gen.map (List.map string >> String.concat ".")
     return!
@@ -74,7 +74,7 @@ module GenX =
 
 
   let private uriPort =
-    Gen.int (Range.constant 1 65535)
+    Gen.int32 (Range.constant 1 65535)
     |> Gen.map (fun i -> ":" + string i)
 
 
@@ -368,13 +368,13 @@ module GenX =
     |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.uint16 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.int <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.int32 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.uint32 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.int64 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.uint64 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.float (Range.exponentialFrom 0. (float Single.MinValue) (float Single.MaxValue)) |> Gen.map single)
-    |> AutoGenConfig.addGenerator (Gen.float <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.float (Range.exponentialFrom 0. (float Decimal.MinValue) (float Decimal.MaxValue)) |> Gen.map decimal)
+    |> AutoGenConfig.addGenerator (Gen.double (Range.exponentialFrom 0. (float Single.MinValue) (float Single.MaxValue)) |> Gen.map single)
+    |> AutoGenConfig.addGenerator (Gen.double <| Range.exponentialBounded ())
+    |> AutoGenConfig.addGenerator (Gen.double (Range.exponentialFrom 0. (float Decimal.MinValue) (float Decimal.MaxValue)) |> Gen.map decimal)
     |> AutoGenConfig.addGenerator Gen.bool
     |> AutoGenConfig.addGenerator Gen.guid
     |> AutoGenConfig.addGenerator Gen.latin1
