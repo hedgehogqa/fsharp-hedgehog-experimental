@@ -406,6 +406,26 @@ module GenX =
 
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
+    let genPoco (shape: ShapePoco<'a>) =
+      let bestCtor =
+        shape.Constructors
+        |> Seq.filter (fun c -> c.IsPublic)
+        |> Seq.sortBy (fun c -> c.Arity)
+        |> Seq.tryHead
+
+      match bestCtor with
+      | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'a>
+      | Some ctor ->
+        ctor.Accept {
+        new IConstructorVisitor<'a, Gen<'a>> with
+          member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
+            let paramGen = autoInner<'CtorParams> config recursionDepths
+            gen {
+              let! args = paramGen
+              return ctor.Invoke args
+            }
+        }
+
     let canRecurse (t: Type) =
       match recursionDepths.TryFind t.AssemblyQualifiedName with
       | Some x -> config.RecursionDepth > x
@@ -540,25 +560,7 @@ module GenX =
             |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
-        | Shape.Poco (:? ShapePoco<'a> as shape) ->
-            let bestCtor =
-              shape.Constructors
-              |> Seq.filter (fun c -> c.IsPublic)
-              |> Seq.sortBy (fun c -> c.Arity)
-              |> Seq.tryHead
-
-            match bestCtor with
-            | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'a>
-            | Some ctor ->
-              ctor.Accept {
-              new IConstructorVisitor<'a, Gen<'a>> with
-                member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-                  let paramGen = autoInner<'CtorParams> config recursionDepths
-                  gen {
-                    let! args = paramGen
-                    return ctor.Invoke args
-                  }
-              }
+        | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape
 
         | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s. You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto." typeof<'a>.FullName)
 
