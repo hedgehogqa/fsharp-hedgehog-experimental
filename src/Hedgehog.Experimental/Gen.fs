@@ -406,6 +406,8 @@ module GenX =
 
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
+    let unsupportedTypeException = NotSupportedException (sprintf "Unable to auto-generate %s. You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto." typeof<'a>.FullName)
+
     let genPoco (shape: ShapePoco<'a>) =
       let bestCtor =
         shape.Constructors
@@ -562,7 +564,7 @@ module GenX =
 
         | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape
 
-        | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s. You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto." typeof<'a>.FullName)
+        | _ -> raise unsupportedTypeException
 
   let auto<'a> = autoInner<'a> defaults Map.empty
 
