@@ -909,6 +909,18 @@ module ShrinkTests =
             rendered.Contains "[[1]\n [0]" ||
             rendered.Contains "[[1]]"@>
 
+  open System.Text.RegularExpressions
+  [<Fact>]
+  let ``auto of recursive ResizeArray shrinks correctly`` () =
+    let property = property {
+      let! rra = GenX.auto<RecResizeArray>
+      test <@ not (rra.X.Count = 2) @>
+    }
+    let shrunkenLine = (render property).Split('\n').[1]
+    let regex = {RecResizeArray.X = ResizeArray()} |> sprintf "%A" |> Regex.Escape |> Regex
+    let matches = regex.Matches shrunkenLine
+    test <@ 2 = matches.Count @>
+
 [<Fact>]
 let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
   let data = [ 0; 1; 2; 3 ]
