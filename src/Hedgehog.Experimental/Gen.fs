@@ -564,7 +564,7 @@ module GenX =
                         let! element = autoInner config recursionDepth
                         collection.Add element
                     return collection |> unbox<'a>
-                  } |> wrap
+                  }
                 | _ -> raise unsupportedTypeException
               }
 
