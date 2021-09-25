@@ -525,6 +525,15 @@ module GenX =
               return values.GetValue index |> unbox
             }
 
+        | Shape.Collection s ->
+            s.Element.Accept {
+              new ITypeVisitor<Gen<'a>> with
+              member __.Visit<'a> () =
+                if canRecurse typeof<'a> then
+                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> Gen.map ResizeArray |> wrap
+                else
+                  Gen.constant (ResizeArray<'a>(): 'a ResizeArray) |> wrap}
+
         | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
             shape.Properties
             |> Seq.toList
