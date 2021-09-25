@@ -453,7 +453,8 @@ module GenX =
     | Some gen -> gen |> Gen.map unbox<'a>
     | None ->
 
-        match TypeShape.Create<'a> () with
+        let typeShape = TypeShape.Create<'a> ()
+        match typeShape with
 
         | Shape.Unit -> wrap <| Gen.constant ()
 
@@ -548,13 +549,24 @@ module GenX =
             }
 
         | Shape.Collection s ->
-            s.Element.Accept {
-              new ITypeVisitor<Gen<'a>> with
-              member __.Visit<'a> () =
-                if canRecurse typeof<'a> then
-                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> Gen.map ResizeArray |> wrap
-                else
-                  Gen.constant (ResizeArray<'a>(): 'a ResizeArray) |> wrap}
+            s.Accept {
+              new ICollectionVisitor<Gen<'a>> with
+              member _.Visit<'collection, 'element when 'collection :> System.Collections.Generic.ICollection<'element>> () =
+                match typeShape with
+                | Shape.Poco (:? ShapePoco<'a> as shape) ->
+                  gen {
+                    let! collection = genPoco shape
+                    let collection = collection |> unbox<System.Collections.Generic.ICollection<'element>>
+                    if canRecurse typeof<'element> then
+                      let recursionDepth = incrementRecursionDepth typeof<'element>
+                      let! seqRange = Gen.integral config.SeqRange
+                      for _ in [0 .. seqRange] do
+                        let! element = autoInner config recursionDepth
+                        collection.Add element
+                    return collection |> unbox<'a>
+                  } |> wrap
+                | _ -> raise unsupportedTypeException
+              }
 
         | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
             shape.Properties
