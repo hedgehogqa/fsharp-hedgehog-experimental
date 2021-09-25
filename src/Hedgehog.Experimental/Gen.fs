@@ -558,11 +558,14 @@ module GenX =
                     let! collection = genPoco shape
                     let collection = collection |> unbox<System.Collections.Generic.ICollection<'element>>
                     if canRecurse typeof<'element> then
-                      let recursionDepth = incrementRecursionDepth typeof<'element>
-                      let! seqRange = Gen.integral config.SeqRange
-                      for _ in [0 .. seqRange] do
-                        let! element = autoInner config recursionDepth
-                        collection.Add element
+                      let! length = Gen.integral config.SeqRange
+                      let! elements =
+                        incrementRecursionDepth typeof<'element>
+                        |> autoInner config
+                        |> List.replicate length
+                        |> ListGen.sequence
+                      for e in elements do
+                        collection.Add e
                     return collection |> unbox<'a>
                   }
                 | _ -> raise unsupportedTypeException
