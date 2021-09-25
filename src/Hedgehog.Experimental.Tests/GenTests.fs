@@ -432,6 +432,38 @@ let ``auto with recursive ResizeArray members generates some values with max rec
     }
 
 
+type RecDictionary =
+  {X: System.Collections.Generic.Dictionary<RecDictionary, RecDictionary>}
+  member this.Depth =
+    match this.X with
+    | x when x.Count = 0 -> 0
+    | xs -> xs |> Seq.collect (fun x -> seq {x.Key.Depth + 1; x.Value.Depth} ) |> Seq.max
+
+[<Fact>]
+let ``auto with recursive Dictionary members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecDictionary>
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive Dictionary members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int32 <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecDictionary> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive Dictionary members generates some values with max recursion depth`` () =
+    checkWith 10<tests> <| property {
+        let! depth = Gen.int32 <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecDictionary> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
 type RecSet =
   {X: Set<RecSet>}
   member this.Depth =
