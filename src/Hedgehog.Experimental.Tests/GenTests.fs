@@ -937,31 +937,33 @@ let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
   @>
   |> test
 
-type RequiresPositiveCtor(x: int) =
-  do if x <= 0 then invalidArg "x" "Requires positive int"
+type CtorThrows(x: Guid) =
+  do x |> string |> failwith
 [<Fact>]
 let ``Shape.Poco with throwing Ctor, upon failure, includes arg in exception`` () =
+  let guid = Guid.NewGuid()
   raisesWith<ArgumentException>
     <@
       GenX.defaults
-      |> AutoGenConfig.addGenerator (Gen.constant -3)
-      |> GenX.autoWith<RequiresPositiveCtor>
+      |> AutoGenConfig.addGenerator (Gen.constant guid)
+      |> GenX.autoWith<CtorThrows>
       |> Gen.sample 0 1
       |> Seq.exactlyOne
     @>
-    (fun x -> <@ x.Message.Contains "-3" @>)
+    (fun x -> <@ guid |> string |> x.Message.Contains @>)
 
-type RequiresPositiveProperty() =
-  member _.ReadWriteProperty with get () = 1
-  member _.ReadWriteProperty with set (value) = if value <= 0 then invalidArg "ReadWriteProperty" "Requires positive int"
+type PropertyThrows() =
+  member _.ReadWriteProperty with get () = Guid.Empty
+  member _.ReadWriteProperty with set (value: Guid) = value |> string |> failwith
 [<Fact>]
 let ``Shape.CliMutable with throwing Property, upon failure, includes arg in exception`` () =
+  let guid = Guid.NewGuid()
   raisesWith<ArgumentException>
     <@
       GenX.defaults
-      |> AutoGenConfig.addGenerator (Gen.constant -3)
-      |> GenX.autoWith<RequiresPositiveProperty>
+      |> AutoGenConfig.addGenerator (Gen.constant guid)
+      |> GenX.autoWith<PropertyThrows>
       |> Gen.sample 0 1
       |> Seq.exactlyOne
     @>
-    (fun x -> <@ x.Message.Contains "-3" @>)
+    (fun x -> <@ guid |> string |> x.Message.Contains @>)

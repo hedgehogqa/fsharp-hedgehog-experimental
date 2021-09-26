@@ -458,7 +458,7 @@ module GenX =
               shape.Set dt mtValue
             with
               | ex ->
-                ArgumentException(sprintf "Cannot set the %O property of %O to the generated value of %O. %s" shape.Label dt mtValue addGenMsg, ex)
+                ArgumentException(sprintf "Cannot set the %s property of %O to the generated value of %O. %s" shape.Label dt mtValue addGenMsg, ex)
                 |> raise
           )
       }
