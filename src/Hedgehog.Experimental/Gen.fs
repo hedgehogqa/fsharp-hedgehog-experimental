@@ -417,7 +417,7 @@ module GenX =
         |> Seq.tryHead
 
       match bestCtor with
-      | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'a>
+      | None -> failwithf "Class %O lacks a public constructor" typeof<'a>
       | Some ctor ->
         ctor.Accept {
         new IConstructorVisitor<'a, Gen<'a>> with
