@@ -420,16 +420,18 @@ module GenX =
       | None -> failwithf "Class %O lacks a public constructor" typeof<'a>
       | Some ctor ->
         ctor.Accept {
-        new IConstructorVisitor<'a, Gen<'a>> with
+        new IConstructorVisitor<'a, Gen<(unit -> 'a)>> with
           member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
             autoInner config recursionDepths
             |> Gen.map (fun args ->
-                try
-                  ctor.Invoke args
-                with
-                  | ex ->
-                    ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args addGenMsg, ex)
-                    |> raise
+                let delayedCtor () =
+                  try
+                    ctor.Invoke args
+                  with
+                    | ex ->
+                      ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args addGenMsg, ex)
+                      |> raise
+                delayedCtor
             )
         }
 
@@ -567,19 +569,18 @@ module GenX =
                 match typeShape with
                 | Shape.Poco (:? ShapePoco<'a> as shape) ->
                   gen {
+                    let! collectionCtor = genPoco shape
                     let! count =
                       if canRecurse typeof<'element> then
                         Gen.integral config.SeqRange
                       else
-                        0 |> Gen.constant
+                        Gen.constant 0
                     let! elements =
                       incrementRecursionDepth typeof<'element>
                       |> autoInner config
                       |> List.replicate count
                       |> ListGen.sequence
-                    let! collection =
-                      genPoco shape
-                      |> Gen.map unbox<System.Collections.Generic.ICollection<'element>>
+                    let collection = collectionCtor () |> unbox<System.Collections.Generic.ICollection<'element>>
                     for e in elements do
                       collection.Add e
                     return collection |> unbox<'a>
@@ -593,7 +594,7 @@ module GenX =
             |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
-        | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape
+        | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape |> Gen.map (fun x -> x ())
 
         | _ -> raise unsupportedTypeException
 
