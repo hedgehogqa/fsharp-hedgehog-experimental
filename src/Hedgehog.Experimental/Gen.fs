@@ -406,7 +406,8 @@ module GenX =
 
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
-    let unsupportedTypeException = NotSupportedException (sprintf "Unable to auto-generate %s. You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto." typeof<'a>.FullName)
+    let addGenMsg = "You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto."
+    let unsupportedTypeException = NotSupportedException (sprintf "Unable to auto-generate %s. %s" typeof<'a>.FullName addGenMsg)
 
     let genPoco (shape: ShapePoco<'a>) =
       let bestCtor =
@@ -421,11 +422,15 @@ module GenX =
         ctor.Accept {
         new IConstructorVisitor<'a, Gen<'a>> with
           member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-            let paramGen = autoInner<'CtorParams> config recursionDepths
-            gen {
-              let! args = paramGen
-              return ctor.Invoke args
-            }
+            autoInner config recursionDepths
+            |> Gen.map (fun args ->
+                try
+                  ctor.Invoke args
+                with
+                  | ex ->
+                    ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args addGenMsg, ex)
+                    |> raise
+            )
         }
 
     let canRecurse (t: Type) =
@@ -446,7 +451,14 @@ module GenX =
         new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
         member _.Visit(shape: ShapeMember<'DeclaringType, 'MemberType>) =
           autoInner<'MemberType> config recursionDepths
-          |> Gen.map (fun mt -> fun dt -> shape.Set dt mt)
+          |> Gen.map (fun mtValue -> fun dt ->
+            try
+              shape.Set dt mtValue
+            with
+              | ex ->
+                ArgumentException(sprintf "Cannot set the %O property of %O to the generated value of %O. %s" shape.Label dt mtValue addGenMsg, ex)
+                |> raise
+          )
       }
 
     match config.Generators |> GeneratorCollection.unwrap |> Map.tryFind typeof<'a>.FullName with
