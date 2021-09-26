@@ -917,7 +917,7 @@ module ShrinkTests =
         |> GenX.autoWith<ResizeArray<int>>
       test <@ 1 <> resizeArray.[0] @>
     }
-    let rendered = Property.render property
+    let rendered = render property
     test <@ rendered.Contains "[1; 0; 0; 0]" @>
 
   open System.Text.RegularExpressions
