@@ -567,7 +567,7 @@ module GenX =
                 match typeShape with
                 | Shape.Poco (:? ShapePoco<'a> as shape) ->
                   gen {
-                    let! length =
+                    let! count =
                       if canRecurse typeof<'element> then
                         Gen.integral config.SeqRange
                       else
@@ -575,7 +575,7 @@ module GenX =
                     let! elements =
                       incrementRecursionDepth typeof<'element>
                       |> autoInner config
-                      |> List.replicate length
+                      |> List.replicate count
                       |> ListGen.sequence
                     let! collection =
                       genPoco shape
