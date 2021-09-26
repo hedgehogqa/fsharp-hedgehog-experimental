@@ -555,17 +555,21 @@ module GenX =
                 match typeShape with
                 | Shape.Poco (:? ShapePoco<'a> as shape) ->
                   gen {
-                    let! collection = genPoco shape
-                    let collection = collection |> unbox<System.Collections.Generic.ICollection<'element>>
-                    if canRecurse typeof<'element> then
-                      let! length = Gen.integral config.SeqRange
-                      let! elements =
-                        incrementRecursionDepth typeof<'element>
-                        |> autoInner config
-                        |> List.replicate length
-                        |> ListGen.sequence
-                      for e in elements do
-                        collection.Add e
+                    let! length =
+                      if canRecurse typeof<'element> then
+                        Gen.integral config.SeqRange
+                      else
+                        0 |> Gen.constant
+                    let! elements =
+                      incrementRecursionDepth typeof<'element>
+                      |> autoInner config
+                      |> List.replicate length
+                      |> ListGen.sequence
+                    let! collection =
+                      genPoco shape
+                      |> Gen.map unbox<System.Collections.Generic.ICollection<'element>>
+                    for e in elements do
+                      collection.Add e
                     return collection |> unbox<'a>
                   }
                 | _ -> raise unsupportedTypeException
