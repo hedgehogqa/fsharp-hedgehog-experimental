@@ -909,6 +909,17 @@ module ShrinkTests =
             rendered.Contains "[[1]\n [0]" ||
             rendered.Contains "[[1]]"@>
 
+  [<Fact>]
+  let ``auto of ResizeArray shrinks correctly`` () =
+    let property = property {
+      let! resizeArray =
+        { GenX.defaults with SeqRange = Range.constant 4 4 }
+        |> GenX.autoWith<ResizeArray<int>>
+      test <@ 1 <> resizeArray.[0] @>
+    }
+    let rendered = Property.render property
+    test <@ rendered.Contains "[1; 0; 0; 0]" @>
+
   open System.Text.RegularExpressions
   [<Fact>]
   let ``auto of recursive ResizeArray shrinks correctly`` () =
