@@ -5,6 +5,7 @@
 * The function `shuffleCase` now shrinks correctly
 * The function `shuffle` now shrinks correctly
 * Added support for multidimensional arrays to `GenX.auto`
+* Added support for `System.Collections.Generic.ICollection<_>` to `GenX.auto`
 
 ### 0.4.0 (2021-02-07)
 

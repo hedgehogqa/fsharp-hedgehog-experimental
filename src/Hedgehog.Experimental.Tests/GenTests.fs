@@ -400,6 +400,70 @@ let ``auto with recursive list members generates some values with max recursion 
     }
 
 
+type RecResizeArray =
+  {X: RecResizeArray ResizeArray}
+  member this.Depth =
+    match this.X with
+    | x when x.Count = 0 -> 0
+    | xs -> xs |> Seq.map (fun x -> x.Depth + 1) |> Seq.max
+
+[<Fact>]
+let ``auto with recursive ResizeArray members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecResizeArray>
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive ResizeArray members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int32 <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecResizeArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive ResizeArray members generates some values with max recursion depth`` () =
+    checkWith 10<tests> <| property {
+        let! depth = Gen.int32 <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecResizeArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
+type RecDictionary =
+  {X: System.Collections.Generic.Dictionary<RecDictionary, RecDictionary>}
+  member this.Depth =
+    match this.X with
+    | x when x.Count = 0 -> 0
+    | xs -> xs |> Seq.collect (fun x -> seq {x.Key.Depth + 1; x.Value.Depth} ) |> Seq.max
+
+[<Fact>]
+let ``auto with recursive Dictionary members does not cause stack overflow using default settings`` () =
+    Property.check <| property {
+        let! _ = GenX.auto<RecDictionary>
+        return true
+    }
+
+[<Fact>]
+let ``auto with recursive Dictionary members respects max recursion depth`` () =
+    Property.check <| property {
+        let! depth = Gen.int32 <| Range.exponential 0 5
+        let! x = GenX.autoWith<RecDictionary> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        x.Depth <=! depth
+    }
+
+[<Fact>]
+let ``auto with recursive Dictionary members generates some values with max recursion depth`` () =
+    checkWith 10<tests> <| property {
+        let! depth = Gen.int32 <| Range.linear 1 5
+        let! xs = GenX.autoWith<RecDictionary> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+                  |> (Gen.list (Range.singleton 100))
+        test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
+    }
+
+
 type RecSet =
   {X: Set<RecSet>}
   member this.Depth =
@@ -845,6 +909,17 @@ module ShrinkTests =
             rendered.Contains "[[1]\n [0]" ||
             rendered.Contains "[[1]]"@>
 
+  [<Fact>]
+  let ``auto of ResizeArray shrinks correctly`` () =
+    let property = property {
+      let! resizeArray =
+        { GenX.defaults with SeqRange = Range.constant 4 4 }
+        |> GenX.autoWith<ResizeArray<int>>
+      test <@ 1 <> resizeArray.[0] @>
+    }
+    let rendered = render property
+    test <@ rendered.Contains "[1; 0; 0; 0]" @>
+
 [<Fact>]
 let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
   let data = [ 0; 1; 2; 3 ]
@@ -861,3 +936,34 @@ let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
     && array.[1, 1] = 3
   @>
   |> test
+
+type CtorThrows(__: Guid) =
+  do failwith ""
+[<Fact>]
+let ``Shape.Poco with throwing Ctor, upon failure, includes arg in exception`` () =
+  let guid = Guid.NewGuid()
+  raisesWith<ArgumentException>
+    <@
+      GenX.defaults
+      |> AutoGenConfig.addGenerator (Gen.constant guid)
+      |> GenX.autoWith<CtorThrows>
+      |> Gen.sample 0 1
+      |> Seq.exactlyOne
+    @>
+    (fun e -> <@ guid |> string |> e.Message.Contains @>)
+
+type PropertyThrows() =
+  member _.ReadWriteProperty with get () = Guid.Empty
+  member _.ReadWriteProperty with set (__: Guid) = failwith ""
+[<Fact>]
+let ``Shape.CliMutable with throwing Property, upon failure, includes arg in exception`` () =
+  let guid = Guid.NewGuid()
+  raisesWith<ArgumentException>
+    <@
+      GenX.defaults
+      |> AutoGenConfig.addGenerator (Gen.constant guid)
+      |> GenX.autoWith<PropertyThrows>
+      |> Gen.sample 0 1
+      |> Seq.exactlyOne
+    @>
+    (fun e -> <@ guid |> string |> e.Message.Contains @>)

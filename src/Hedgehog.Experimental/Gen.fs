@@ -404,7 +404,43 @@ module GenX =
       loop 0 lengths
       array
 
+  module internal InternalGen =
+    let list<'a> canRecurse autoInner config incrementRecursionDepth =
+      if canRecurse typeof<'a> then
+        autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange
+      else
+        Gen.constant ([]: 'a list)
+
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
+
+    let addGenMsg = "You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto."
+    let unsupportedTypeException = NotSupportedException (sprintf "Unable to auto-generate %s. %s" typeof<'a>.FullName addGenMsg)
+
+    let genPoco (shape: ShapePoco<'a>) =
+      let bestCtor =
+        shape.Constructors
+        |> Seq.filter (fun c -> c.IsPublic)
+        |> Seq.sortBy (fun c -> c.Arity)
+        |> Seq.tryHead
+
+      match bestCtor with
+      | None -> failwithf "Class %O lacks a public constructor" typeof<'a>
+      | Some ctor ->
+        ctor.Accept {
+        new IConstructorVisitor<'a, Gen<(unit -> 'a)>> with
+          member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
+            autoInner config recursionDepths
+            |> Gen.map (fun args ->
+                let delayedCtor () =
+                  try
+                    ctor.Invoke args
+                  with
+                    | ex ->
+                      ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args addGenMsg, ex)
+                      |> raise
+                delayedCtor
+            )
+        }
 
     let canRecurse (t: Type) =
       match recursionDepths.TryFind t.AssemblyQualifiedName with
@@ -424,14 +460,22 @@ module GenX =
         new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
         member _.Visit(shape: ShapeMember<'DeclaringType, 'MemberType>) =
           autoInner<'MemberType> config recursionDepths
-          |> Gen.map (fun mt -> fun dt -> shape.Set dt mt)
+          |> Gen.map (fun mtValue -> fun dt ->
+            try
+              shape.Set dt mtValue
+            with
+              | ex ->
+                ArgumentException(sprintf "Cannot set the %s property of %O to the generated value of %O. %s" shape.Label dt mtValue addGenMsg, ex)
+                |> raise
+          )
       }
 
     match config.Generators |> GeneratorCollection.unwrap |> Map.tryFind typeof<'a>.FullName with
     | Some gen -> gen |> Gen.map unbox<'a>
     | None ->
 
-        match TypeShape.Create<'a> () with
+        let typeShape = TypeShape.Create<'a> ()
+        match typeShape with
 
         | Shape.Unit -> wrap <| Gen.constant ()
 
@@ -472,10 +516,7 @@ module GenX =
             s.Element.Accept {
               new ITypeVisitor<Gen<'a>> with
               member __.Visit<'a> () =
-                if canRecurse typeof<'a> then
-                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap
-                else
-                  Gen.constant ([]: 'a list) |> wrap}
+                InternalGen.list<'a> canRecurse autoInner config incrementRecursionDepth |> wrap }
 
         | Shape.FSharpSet s ->
             s.Accept {
@@ -525,33 +566,32 @@ module GenX =
               return values.GetValue index |> unbox
             }
 
+        | Shape.Collection s ->
+            s.Accept {
+              new ICollectionVisitor<Gen<'a>> with
+              member _.Visit<'collection, 'element when 'collection :> System.Collections.Generic.ICollection<'element>> () =
+                match typeShape with
+                | Shape.Poco (:? ShapePoco<'a> as shape) ->
+                  gen {
+                    let! collectionCtor = genPoco shape
+                    let! elements = InternalGen.list canRecurse autoInner config incrementRecursionDepth
+                    let collection = collectionCtor () |> unbox<System.Collections.Generic.ICollection<'element>>
+                    for e in elements do
+                      collection.Add e
+                    return collection |> unbox<'a>
+                  }
+                | _ -> raise unsupportedTypeException
+              }
+
         | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
             shape.Properties
             |> Seq.toList
             |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
-        | Shape.Poco (:? ShapePoco<'a> as shape) ->
-            let bestCtor =
-              shape.Constructors
-              |> Seq.filter (fun c -> c.IsPublic)
-              |> Seq.sortBy (fun c -> c.Arity)
-              |> Seq.tryHead
+        | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape |> Gen.map (fun x -> x ())
 
-            match bestCtor with
-            | None -> failwithf "Class %O lacking an appropriate ctor" typeof<'a>
-            | Some ctor ->
-              ctor.Accept {
-              new IConstructorVisitor<'a, Gen<'a>> with
-                member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-                  let paramGen = autoInner<'CtorParams> config recursionDepths
-                  gen {
-                    let! args = paramGen
-                    return ctor.Invoke args
-                  }
-              }
-
-        | _ -> raise <| NotSupportedException (sprintf "Unable to auto-generate %s. You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto." typeof<'a>.FullName)
+        | _ -> raise unsupportedTypeException
 
   let auto<'a> = autoInner<'a> defaults Map.empty
 
