@@ -1,11 +1,12 @@
 # Changelog
 
-### 0.4.1
+### 0.5.0 (2021-09-28)
 * The `Gen.auto` cases for records, classes, discriminated unions, and tuples now shrink correctly.
 * The function `shuffleCase` now shrinks correctly
 * The function `shuffle` now shrinks correctly
 * Added support for multidimensional arrays to `GenX.auto`
 * Added support for `System.Collections.Generic.ICollection<_>` to `GenX.auto`
+* Updated for Hedgehog 0.11.0
 
 ### 0.4.0 (2021-02-07)
 
