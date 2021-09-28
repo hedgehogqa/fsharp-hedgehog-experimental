@@ -404,6 +404,13 @@ module GenX =
       loop 0 lengths
       array
 
+  module internal InternalGen =
+    let list<'a> canRecurse autoInner config incrementRecursionDepth =
+      if canRecurse typeof<'a> then
+        autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange
+      else
+        Gen.constant ([]: 'a list)
+
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
     let addGenMsg = "You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto."
@@ -509,10 +516,7 @@ module GenX =
             s.Element.Accept {
               new ITypeVisitor<Gen<'a>> with
               member __.Visit<'a> () =
-                if canRecurse typeof<'a> then
-                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange |> wrap
-                else
-                  Gen.constant ([]: 'a list) |> wrap}
+                InternalGen.list<'a> canRecurse autoInner config incrementRecursionDepth |> wrap }
 
         | Shape.FSharpSet s ->
             s.Accept {
@@ -570,16 +574,7 @@ module GenX =
                 | Shape.Poco (:? ShapePoco<'a> as shape) ->
                   gen {
                     let! collectionCtor = genPoco shape
-                    let! count =
-                      if canRecurse typeof<'element> then
-                        Gen.integral config.SeqRange
-                      else
-                        Gen.constant 0
-                    let! elements =
-                      incrementRecursionDepth typeof<'element>
-                      |> autoInner config
-                      |> List.replicate count
-                      |> ListGen.sequence
+                    let! elements = InternalGen.list canRecurse autoInner config incrementRecursionDepth
                     let collection = collectionCtor () |> unbox<System.Collections.Generic.ICollection<'element>>
                     for e in elements do
                       collection.Add e
