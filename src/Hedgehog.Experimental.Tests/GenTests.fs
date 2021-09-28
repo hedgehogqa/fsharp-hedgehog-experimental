@@ -937,8 +937,8 @@ let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
   @>
   |> test
 
-type CtorThrows(x: Guid) =
-  do x |> string |> failwith
+type CtorThrows(__: Guid) =
+  do failwith ""
 [<Fact>]
 let ``Shape.Poco with throwing Ctor, upon failure, includes arg in exception`` () =
   let guid = Guid.NewGuid()
@@ -950,11 +950,11 @@ let ``Shape.Poco with throwing Ctor, upon failure, includes arg in exception`` (
       |> Gen.sample 0 1
       |> Seq.exactlyOne
     @>
-    (fun x -> <@ guid |> string |> x.Message.Contains @>)
+    (fun e -> <@ guid |> string |> e.Message.Contains @>)
 
 type PropertyThrows() =
   member _.ReadWriteProperty with get () = Guid.Empty
-  member _.ReadWriteProperty with set (value: Guid) = value |> string |> failwith
+  member _.ReadWriteProperty with set (__: Guid) = failwith ""
 [<Fact>]
 let ``Shape.CliMutable with throwing Property, upon failure, includes arg in exception`` () =
   let guid = Guid.NewGuid()
@@ -966,4 +966,4 @@ let ``Shape.CliMutable with throwing Property, upon failure, includes arg in exc
       |> Gen.sample 0 1
       |> Seq.exactlyOne
     @>
-    (fun x -> <@ guid |> string |> x.Message.Contains @>)
+    (fun e -> <@ guid |> string |> e.Message.Contains @>)
