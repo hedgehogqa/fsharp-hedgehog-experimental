@@ -125,7 +125,7 @@ let ``notEqualToOpt does not generate a value equal to another option-wrapped va
 
 [<Fact>]
 let ``notIn generates element that is not in list`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! xs =
             Gen.int32 (Range.linearFrom 0 -100 100)
             |> Gen.list (Range.linear 1 10)
@@ -135,7 +135,7 @@ let ``notIn generates element that is not in list`` () =
 
 [<Fact>]
 let ``notContains generates list that does not contain element`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! x = Gen.int32 (Range.linearFrom 0 -100 100)
         let! xs =
             Gen.int32 (Range.linearFrom 0 -100 100)
@@ -146,7 +146,7 @@ let ``notContains generates list that does not contain element`` () =
 
 [<Fact>]
 let ``addElement generates a list with the specified element`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! x = Gen.int32 (Range.exponentialBounded ())
         let! xs =
             Gen.int32 (Range.exponentialBounded ())
@@ -313,7 +313,7 @@ type RecOption =
 
 [<Fact>]
 let ``auto with recursive option members does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<RecOption>
         return true
     }
@@ -345,7 +345,7 @@ type RecArray =
 
 [<Fact>]
 let ``auto with recursive array members does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<RecArray>
         return true
     }
@@ -377,7 +377,7 @@ type RecList =
 
 [<Fact>]
 let ``auto with recursive list members does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<RecList>
         return true
     }
@@ -409,7 +409,7 @@ type RecResizeArray =
 
 [<Fact>]
 let ``auto with recursive ResizeArray members does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<RecResizeArray>
         return true
     }
@@ -441,7 +441,7 @@ type RecDictionary =
 
 [<Fact>]
 let ``auto with recursive Dictionary members does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<RecDictionary>
         return true
     }
@@ -473,7 +473,7 @@ type RecSet =
 
 [<Fact>]
 let ``auto with recursive set members does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<RecSet>
         return true
     }
@@ -505,7 +505,7 @@ type RecMap =
 
 [<Fact>]
 let ``auto with recursive map members does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<RecMap>
         return true
     }
@@ -552,7 +552,7 @@ and MutuallyRecursive2 =
 
 [<Fact>]
 let ``auto with mutually recursive types does not cause stack overflow using default settings`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<MutuallyRecursive1>
         let! _ = GenX.auto<MutuallyRecursive2>
         return true
@@ -582,7 +582,7 @@ let ``auto with mutually recursive types generates some values with max recursio
 
 [<Fact>]
 let ``auto with UInt64 generates UInt64`` () =
-    Property.check <| property {
+    Property.checkBool <| property {
         let! _ = GenX.auto<uint64>
         return true
     }
