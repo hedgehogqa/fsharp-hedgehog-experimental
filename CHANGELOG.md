@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.6.0 (2022-03-19)
+
+* Updated for Hedgehog 0.12.1
+
 ### 0.5.0 (2021-09-28)
 * The `Gen.auto` cases for records, classes, discriminated unions, and tuples now shrink correctly.
 * The function `shuffleCase` now shrinks correctly
