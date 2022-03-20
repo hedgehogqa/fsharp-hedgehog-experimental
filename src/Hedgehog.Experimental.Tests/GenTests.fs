@@ -745,14 +745,12 @@ type TypeWithoutAccessibleCtor private (state: int) =
     member this.State = state
 
 
-let myTypeGen = gen {
-    let! state = Gen.int32 <| Range.exponentialBounded ()
-    return TypeWithoutAccessibleCtor.CustomConstructor state
-}
-
-
 [<Fact>]
 let ``auto can generate custom classes with no suitable constructors using overrides`` () =
+  let myTypeGen = gen {
+    let! state = Gen.int32 <| Range.exponentialBounded ()
+    return TypeWithoutAccessibleCtor.CustomConstructor state
+  }
   checkWith 1<tests> <| property {
       let config = GenX.defaults |> AutoGenConfig.addGenerator myTypeGen
       let! _ = GenX.autoWith<TypeWithoutAccessibleCtor> config
@@ -760,11 +758,9 @@ let ``auto can generate custom classes with no suitable constructors using overr
   }
 
 
-let constantIntGen = Gen.constant 1
-
-
 [<Fact>]
 let ``auto uses specified overrides`` () =
+  let constantIntGen = Gen.constant 1
   Property.check <| property {
       let config = GenX.defaults |> AutoGenConfig.addGenerator constantIntGen
       let! i = GenX.autoWith<int> config
