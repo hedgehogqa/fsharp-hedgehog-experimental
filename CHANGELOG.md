@@ -3,6 +3,7 @@
 ### Version TBD
 
 * `Gen.auto` can now generate `System.Nullable<>` types.
+* Improved C# experience via more consistent naming and the addition of extension methods.
 
 ### 0.6.0 (2022-03-19)
 
