@@ -576,7 +576,8 @@ module GenX =
                     |> Gen.map Option.toNullable
                     |> wrap
                   else
-                    Nullable () |> unbox |> Gen.constant }
+                    Nullable () |> unbox |> Gen.constant
+            }
 
         | Shape.Collection s ->
             s.Accept {
