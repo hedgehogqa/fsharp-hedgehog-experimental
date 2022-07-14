@@ -22,7 +22,7 @@ jobs:
     - name: Test
       run: dotnet test -c Release src/Hedgehog.Experimental.Tests
     - name: Publish NuGet
-      uses: brandedoutcast/publish-nuget@v2.5.5
+      uses: alirezanet/publish-nuget@v3.0.4
       with:
         PROJECT_FILE_PATH: "src/Hedgehog.Experimental/Hedgehog.Experimental.fsproj"
         PACKAGE_NAME: "Hedgehog.Experimental"
