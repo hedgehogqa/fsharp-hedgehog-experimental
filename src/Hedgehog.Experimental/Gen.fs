@@ -384,7 +384,7 @@ module GenX =
     |> AutoGenConfig.addGenerator uri
 
   module internal MultidimensionalArray =
-    
+
     let createWithDefaultEntries<'a> (lengths: int list) =
       let array = lengths |> Array.ofList
       Array.CreateInstance (typeof<'a>, array)
@@ -565,6 +565,18 @@ module GenX =
               let! index = Gen.integral <| Range.constant 0 (values.Length - 1)
               return values.GetValue index |> unbox
             }
+
+        | Shape.Nullable s ->
+            s.Accept {
+              new INullableVisitor<Gen<'a>> with
+                member __.Visit<'a when 'a : (new : unit -> 'a) and 'a :> ValueType and 'a : struct> () =
+                  if canRecurse typeof<'a> then
+                    autoInner<'a> config (incrementRecursionDepth typeof<'a>)
+                    |> Gen.option
+                    |> Gen.map Option.toNullable
+                    |> wrap
+                  else
+                    Nullable () |> unbox |> Gen.constant }
 
         | Shape.Collection s ->
             s.Accept {

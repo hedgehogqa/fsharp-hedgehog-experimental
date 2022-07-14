@@ -963,3 +963,31 @@ let ``Shape.CliMutable with throwing Property, upon failure, includes arg in exc
       |> Seq.exactlyOne
     @>
     (fun e -> <@ guid |> string |> e.Message.Contains @>)
+
+[<Fact>]
+let ``auto can generate Nullable`` () =
+  Property.check <| property {
+    let! _ = GenX.auto<Nullable<int>>
+    ()
+  }
+
+type RecordWithNullables =
+  { field : Nullable<float>
+    colour : Nullable<DateTimeKind>
+  }
+
+[<Fact>]
+let ``auto can generate record with Nullable fields`` () =
+  Property.check <| property {
+    let! _ = GenX.auto<RecordWithNullables>
+    ()
+  }
+
+[<Fact>]
+let ``auto can generate Nullable bool without recursion`` () =
+  Property.check <| property {
+    let! _ =
+      { GenX.defaults with RecursionDepth = 0 }
+      |> GenX.autoWith<Nullable<bool>>
+    ()
+  }
