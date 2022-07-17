@@ -26,6 +26,7 @@
       <_Parameter1>Hedgehog.Experimental.Tests</_Parameter1>
     </AssemblyAttribute>
     <Compile Include="Gen.fs" />
+    <Compile Include="GenExtensions.fs" />
   </ItemGroup>
 
   <ItemGroup>
