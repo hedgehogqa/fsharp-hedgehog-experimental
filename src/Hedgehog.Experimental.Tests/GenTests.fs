@@ -4,6 +4,7 @@ open System
 open Xunit
 open Swensen.Unquote
 open Hedgehog
+open TypeShape.Core
 
 let checkWith tests = PropertyConfig.defaultConfig |> PropertyConfig.withTests tests |> Property.checkWith
 
@@ -1001,4 +1002,58 @@ let ``auto can generate seq`` () =
       |> GenX.autoWith<seq<int>>
 
     return Seq.length xs = expectedLen
+  }
+
+
+type Animal() =
+  let mutable value = new obj()
+  member _.Value
+    with get() : obj = value
+    and set(v: obj) = value <- v
+
+type Dog() =
+  inherit Animal()
+  member _.Value
+    with get() : string = base.Value :?> string
+    and set(v: string) = base.Value <- v
+
+type Poodle() =
+  inherit Dog()
+
+[<Fact>]
+let ``Type Dog is Shape_CliMutable`` () =
+  let isDogCliMutable = 
+    match TypeShape.Create<Dog> () with
+    | Shape.CliMutable _ -> true
+    | _ -> false
+  test <@ isDogCliMutable @>
+
+[<Fact>]
+let ``Type Poodle is Shape_CliMutable`` () =
+  let isPoodleCliMutable = 
+    match TypeShape.Create<Poodle> () with
+    | Shape.CliMutable _ -> true
+    | _ -> false
+  test <@ isPoodleCliMutable @>
+
+[<Fact>]
+let ``auto can generate Shape_CliMutable Dog which has a shadowed property that strengthens the type`` () =
+  Property.check <| property {
+    let actual =
+      GenX.auto<Dog>
+      |> Gen.sample 0 1
+      |> Seq.head
+    actual.Value // Does not throw an exception
+    |> ignore
+  }
+
+[<Fact>]
+let ``auto can generate Shape_CliMutable Poodle which inherits from Dog which has a shadowed property that strengthens the type`` () =
+  Property.check <| property {
+    let actual =
+      GenX.auto<Poodle>
+      |> Gen.sample 0 1
+      |> Seq.head
+    actual.Value // Does not throw an exception
+    |> ignore
   }
