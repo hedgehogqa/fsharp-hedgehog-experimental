@@ -991,3 +991,14 @@ let ``auto can generate Nullable bool without recursion`` () =
       |> GenX.autoWith<Nullable<bool>>
     ()
   }
+
+[<Fact>]
+let ``auto can generate seq`` () =
+  Property.checkBool <| property {
+    let! expectedLen = Gen.int32 (Range.linear 0 105)
+    let! xs =
+      { GenX.defaults with SeqRange = Range.singleton expectedLen }
+      |> GenX.autoWith<seq<int>>
+
+    return Seq.length xs = expectedLen
+  }
