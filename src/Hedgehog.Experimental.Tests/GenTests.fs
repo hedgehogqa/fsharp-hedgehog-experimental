@@ -1007,15 +1007,23 @@ let ``auto can generate seq`` () =
 
 type Animal() =
   let mutable value = new obj()
+  let mutable count = 0
+  member _.AnimalCount with get() = count
   member _.Value
     with get() : obj = value
-    and set(v: obj) = value <- v
+    and set(v: obj) =
+      count <- count + 1
+      value <- v
 
 type Dog() =
   inherit Animal()
+  let mutable count = 0
+  member _.DogCount with get() = count
   member _.Value
     with get() : string = base.Value :?> string
-    and set(v: string) = base.Value <- v
+    and set(v: string) =
+      count <- count + 1
+      base.Value <- v
 
 type Poodle() =
   inherit Dog()
@@ -1056,4 +1064,14 @@ let ``auto can generate Shape_CliMutable Poodle which inherits from Dog which ha
       |> Seq.head
     actual.Value // Does not throw an exception
     |> ignore
+  }
+
+[<Fact>]
+let ``auto does not set shadowed property of Shape_CliMutable`` () =
+  Property.check <| property {
+    let actual =
+      GenX.auto<Dog>
+      |> Gen.sample 0 1
+      |> Seq.head
+    test <@ actual.AnimalCount = actual.DogCount @>
   }
