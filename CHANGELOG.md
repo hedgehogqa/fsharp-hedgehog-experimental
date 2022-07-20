@@ -1,5 +1,7 @@
 # Changelog
 
+### TBD
+
 ### 0.6.1 (2022-07-17)
 
 * `Gen.auto` can now generate `System.Nullable<>` types.
