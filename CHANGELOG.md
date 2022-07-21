@@ -2,9 +2,11 @@
 
 ### TBD
 
+* `GenX.auto` can now generate `Seq<_>` aka `IEnumerable<_>`.
+
 ### 0.6.1 (2022-07-17)
 
-* `Gen.auto` can now generate `System.Nullable<>` types.
+* `GenX.auto` can now generate `System.Nullable<>` types.
 * Improved C# experience via the addition of extension methods.
 
 ### 0.6.0 (2022-03-19)
@@ -12,7 +14,8 @@
 * Updated for Hedgehog 0.12.1
 
 ### 0.5.0 (2021-09-28)
-* The `Gen.auto` cases for records, classes, discriminated unions, and tuples now shrink correctly.
+
+* The `GenX.auto` cases for records, classes, discriminated unions, and tuples now shrink correctly.
 * The function `shuffleCase` now shrinks correctly
 * The function `shuffle` now shrinks correctly
 * Added support for multidimensional arrays to `GenX.auto`
@@ -22,7 +25,7 @@
 ### 0.4.0 (2021-02-07)
 
 * Updated for Hedgehog 0.10.0
-* `Gen.auto` now uses Hedgehog’s new `DateTime` and `DateTimeOffset` generators
+* `GenX.auto` now uses Hedgehog’s new `DateTime` and `DateTimeOffset` generators
 
 ### 0.3.0 (2021-01-06)
 
