@@ -605,7 +605,10 @@ module GenX =
               loop sm.MemberInfo.DeclaringType 0
             shape.Properties
             |> Array.toList
-            |> List.sortBy getDepth
+            |> List.groupBy (fun p -> p.MemberInfo.Name)
+            |> List.map (snd >> function
+                                | [p] -> p
+                                | ps -> ps |> List.sortByDescending getDepth |> List.head)
             |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
