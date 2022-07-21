@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Xunit;
 using FluentAssertions;
 
@@ -52,4 +53,11 @@ public class GenTests
 
     prop.Check();
   }
+
+  [Fact]
+  public void ShouldSupportIEnumerable() =>
+    GenX.auto<IEnumerable<int>>()
+      .Sample(1, 5)
+      .Should()
+      .AllSatisfy(x => x.Should().NotBeNull());
 }

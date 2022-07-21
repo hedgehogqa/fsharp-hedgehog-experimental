@@ -604,6 +604,14 @@ module GenX =
 
         | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape |> Gen.map (fun x -> x ())
 
+        | Shape.Enumerable s ->
+            s.Element.Accept {
+              new ITypeVisitor<Gen<'a>> with
+              member __.Visit<'a> () =
+                InternalGen.list<'a> canRecurse autoInner config incrementRecursionDepth
+                |> Gen.map Seq.ofList
+                |> wrap }
+
         | _ -> raise unsupportedTypeException
 
   let auto<'a> = autoInner<'a> defaults Map.empty
