@@ -4,6 +4,7 @@
 
 * `GenX.auto` can now generate `Seq<_>` aka `IEnumerable<_>`.
 * `GenX.auto` can now safely (and efficiently) genereate a class with only a default constructor that shadows a property and strengthens its return type.
+* Added C# extension methods for `AutoGenConfig`.
 
 ### 0.6.1 (2022-07-17)
 
