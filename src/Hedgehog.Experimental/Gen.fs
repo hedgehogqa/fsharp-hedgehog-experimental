@@ -597,8 +597,15 @@ module GenX =
               }
 
         | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
+            let getDepth (sm: IShapeMember<_>) =
+              let rec loop (t: Type) depth =
+                if t = null
+                then depth
+                else loop t.BaseType (depth + 1)
+              loop sm.MemberInfo.DeclaringType 0
             shape.Properties
-            |> Seq.toList
+            |> Array.toList
+            |> List.sortBy getDepth
             |> ListGen.traverse memberSetterGenerator
             |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
