@@ -22,6 +22,8 @@
       <Pack>True</Pack>
       <PackagePath></PackagePath>
     </None>
+    <Compile Include="TypeUtils.fs" />
+    <Compile Include="TypeShape.fs" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Hedgehog.Experimental.Tests</_Parameter1>
     </AssemblyAttribute>
@@ -31,6 +33,7 @@
 
   <ItemGroup>
     <PackageReference Include="Hedgehog" Version="[0.13.0, 99]" />
+    <PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
     <PackageReference Include="TypeShape" Version="9.0.0" />
   </ItemGroup>
 
