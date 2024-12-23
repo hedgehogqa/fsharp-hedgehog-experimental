@@ -11,6 +11,13 @@ type GenExtraExtensions() =
   static member WithGenerator(self : AutoGenConfig, generator : Gen<'T>) =
       self |> AutoGenConfig.addGenerator generator
 
+  /// Add generators from a given class.
+  /// The type is expected to have static methods that return Gen<T>.
+  /// These methods can have parameters which are required to be of type Gen<T>.
+  [<Extension>]
+  static member WithGenerators<'T>(self : AutoGenConfig) =
+    self |> AutoGenConfig.addGenerators<'T>
+
   [<Extension>]
   static member WithRecursionDepth(self : AutoGenConfig, depth : int) =
     { self with RecursionDepth = depth }
