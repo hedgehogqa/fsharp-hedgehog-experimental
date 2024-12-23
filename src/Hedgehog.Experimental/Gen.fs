@@ -29,6 +29,14 @@ module AutoGenConfig =
   let addGenerator (gen: Gen<'a>) =
     gen |> Gen.map box |> Map.add typeof<'a>.FullName |> GeneratorCollection.map |> mapGenerators
 
+  /// Add generators from a given type.
+  /// The type is expected to have static methods that return Gen<'a>.
+  /// These methods can have parameters which are required to be of type Gen<_>.
+  let addGenerators<'a> (config: AutoGenConfig) =
+    // An identity function for the purpose of testing
+    // TODO: Implement this function correctly
+    config
+
 
 module GenX =
 
