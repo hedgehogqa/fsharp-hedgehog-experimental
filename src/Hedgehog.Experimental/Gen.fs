@@ -1,16 +1,40 @@
 namespace Hedgehog
 
 open System
+open System.Collections.Immutable
+open System.Reflection
 open TypeShape.Core
 
-[<Struct>]
-type GeneratorCollection = private GeneratorCollection of Map<string, Gen<obj>>
+// A generator factory which can be backed by a generic method.
+// It takes an array of genetic type parameters, and an array of arguments to create the generator.
+type GeneratorFactory = Type[] -> obj[] -> obj
 
+[<Struct>]
+type GeneratorCollection =
+  // A dictionary of generators.
+  // The key is a 'required' generator type
+  // The value is a tuple of:
+  // 1. An array types of arguments for the generator factory
+  // 2. A generator factory, which can be backed by a generic method,
+  //    so it takes an array of genetic type parameters,
+  //    and an array of arguments to create the generator.
+  private GeneratorCollection of ImmutableDictionary<Type, Type[] * GeneratorFactory>
 
 module GeneratorCollection =
 
   let internal unwrap (GeneratorCollection map) = map
   let internal map f = unwrap >> f >> GeneratorCollection
+
+  let internal addGenerator (targetType: Type) (paramTypes: Type[]) (factory: Type[] -> obj[] -> obj) =
+        map _.SetItem(targetType, (paramTypes, factory))
+
+  // Find a generator that can satisfy the given requited type.
+  // It also takes care of finding 'generic' generators (like Either<'a, 'b>)
+  // to satisfy specific types (like Either<int, string>).
+  let internal tryFindFor (targetType: Type) =
+    unwrap
+    >> Seq.tryFind (fun (KeyValue (t, _)) -> t |> TypeUtils.satisfies targetType)
+    >> Option.map (fun (KeyValue (_, v)) -> v)
 
 
 [<CLIMutable>]
@@ -27,16 +51,41 @@ module AutoGenConfig =
     { config with Generators = config.Generators |> f }
 
   let addGenerator (gen: Gen<'a>) =
-    gen |> Gen.map box |> Map.add typeof<'a>.FullName |> GeneratorCollection.map |> mapGenerators
+    mapGenerators (GeneratorCollection.map _.SetItem(typeof<'a>, ([||], fun _ _ -> gen)))
 
   /// Add generators from a given type.
   /// The type is expected to have static methods that return Gen<'a>.
   /// These methods can have parameters which are required to be of type Gen<_>.
   let addGenerators<'a> (config: AutoGenConfig) =
-    // An identity function for the purpose of testing
-    // TODO: Implement this function correctly
-    config
+    let isGen (t: Type) = t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Gen<_>>
 
+    // Ensure that all the parameters are of type Gen<_>, and return the unwrapped types.
+    let unwrapGenParameters (methodInfo: MethodInfo) : Type[] =
+      methodInfo.GetParameters()
+      |> Array.map (fun param ->
+          if isGen param.ParameterType then
+            param.ParameterType.GetGenericArguments()[0]
+          else
+            failwithf "Method %s.%s has a parameter '%s' which is not of type Gen<...>"
+                       methodInfo.DeclaringType.Name
+                       methodInfo.Name
+                       param.Name)
+
+    // find all the static methods that return Gen<'a>
+    let methods =
+      typeof<'a>.GetMethods(BindingFlags.Static ||| BindingFlags.Public)
+      |> Seq.filter (fun m -> isGen m.ReturnType)
+
+    // Register these methods as generator factories
+    methods
+    |> Seq.fold (fun cfg methodInfo ->
+      let targetType = methodInfo.ReturnType.GetGenericArguments()[0]
+      let typeArray = unwrapGenParameters methodInfo
+      let factory: Type[] -> obj[] -> obj = fun types gens ->
+          let methodToCall = if Array.isEmpty types then methodInfo else methodInfo.MakeGenericMethod(types)
+          methodToCall.Invoke(null, gens)
+      cfg |> mapGenerators (GeneratorCollection.addGenerator targetType typeArray factory)
+    ) config
 
 module GenX =
 
@@ -371,7 +420,7 @@ module GenX =
     {
       SeqRange = Range.exponential 0 50
       RecursionDepth = 1
-      Generators = GeneratorCollection Map.empty
+      Generators = GeneratorCollection ImmutableDictionary.Empty
     }
     |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
@@ -478,11 +527,46 @@ module GenX =
           )
       }
 
-    match config.Generators |> GeneratorCollection.unwrap |> Map.tryFind typeof<'a>.FullName with
-    | Some gen -> gen |> Gen.map unbox<'a>
-    | None ->
+    let typeShape = TypeShape.Create<'a> ()
 
-        let typeShape = TypeShape.Create<'a> ()
+    // Check if there is a registered generator factory for a given requested generator.
+    // Fallback to the default heuristics if no factory is found.
+    match config.Generators |> GeneratorCollection.tryFindFor typeof<'a> with
+    | Some (args, factory) ->
+
+      let factoryArgs =
+        match typeShape with
+        | GenericShape (_, typeArgs) ->
+          // If the type is generic, we need to find the actual types to use
+          // which requires a bit of matching between all these generic 'a, 'b
+          // and their actual counterparts.
+          let argTypes =
+              args
+              |> Array.map (fun arg ->
+                  if arg.IsGenericParameter then
+                    typeArgs
+                    |> Array.tryFind (fun p -> p.argTypeDefinition.Name = arg.Name)
+                    |> Option.map (_.argType)
+                    |> Option.defaultWith (fun _ -> raise unsupportedTypeException)
+                  else arg)
+          {| genericTypes = typeArgs |> Array.map (_.argType); argumentTypes = argTypes |}
+
+        | _ -> {| genericTypes = Array.empty; argumentTypes = args |}
+
+
+      // and if the factory takes parameters, recurse and find generators for them
+      let targetArgs =
+        factoryArgs.argumentTypes
+        |> Array.map (fun t ->
+          let ts = TypeShape.Create(t)
+          ts.Accept { new ITypeVisitor<obj> with
+            member __.Visit<'b> () = autoInner<'b> config recursionDepths |> box
+          })
+
+      let resGen = factory factoryArgs.genericTypes targetArgs
+      resGen |> unbox<Gen<'a>>
+
+    | None ->
         match typeShape with
 
         | Shape.Unit -> wrap <| Gen.constant ()

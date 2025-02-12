@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="TypeUtilsTests.fs" />
     <Compile Include="GenTests.fs" />
     <Compile Include="GenericGenTests.fs" />
   </ItemGroup>
@@ -17,6 +18,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
+    <PackageReference Include="TypeShape" Version="10.0.0" />
     <PackageReference Include="Unquote" Version="5.0.0" />
     <PackageReference Include="xunit.core" Version="2.4.1" />
     <PackageReference Include="xunit.assert" Version="2.4.1" />
