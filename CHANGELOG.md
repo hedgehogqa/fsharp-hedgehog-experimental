@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.8.0 (2025-03-08)
+
+* Added support for registering generators for generic types in `AutoGenConfig`.
+* Bumped .NET Framework to 8.0 (LTE) because 6.0 is no longer supported.
+
 ### 0.7.0 (2022-07-23)
 
 * `GenX.auto` can now generate `Seq<_>` aka `IEnumerable<_>`.
