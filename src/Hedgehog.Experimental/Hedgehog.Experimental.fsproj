@@ -24,10 +24,12 @@
     </None>
     <Compile Include="TypeUtils.fs" />
     <Compile Include="TypeShape.fs" />
+    <Compile Include="GeneratorCollection.fs" />
+    <Compile Include="AutoGenConfig.fs" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Hedgehog.Experimental.Tests</_Parameter1>
     </AssemblyAttribute>
-    <Compile Include="Gen.fs" />
+    <Compile Include="GenX.fs" />
     <Compile Include="GenExtensions.fs" />
   </ItemGroup>
 
