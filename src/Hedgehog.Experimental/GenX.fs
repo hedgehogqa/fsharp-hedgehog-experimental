@@ -1,7 +1,6 @@
 namespace Hedgehog
 
 open System
-open System.Collections.Immutable
 open TypeShape.Core
 
 module GenX =
@@ -334,7 +333,7 @@ module GenX =
         DateTime.MinValue.Ticks
         DateTime.MaxValue.Ticks
       |> Range.map DateTime
-    AutoGenConfig(None, None, GeneratorCollection ImmutableDictionary.Empty)
+    AutoGenConfig(None, None, GeneratorCollection.empty)
     |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.uint16 <| Range.exponentialBounded ())

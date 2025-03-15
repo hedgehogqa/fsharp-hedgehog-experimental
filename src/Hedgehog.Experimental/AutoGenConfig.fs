@@ -9,7 +9,7 @@ type AutoGenConfig internal (seqRange: Range<int> option, recursionDepth: int op
 
   member this.SeqRange = seqRange |> Option.defaultValue defaultSeqRange
   member this.RecursionDepth = recursionDepth |> Option.defaultValue defaultRecursionDepth
-  member this.Generators = generators
+  member internal this.Generators = generators
 
   member this.WithSeqRange(range: Range<int>) = AutoGenConfig(Some range, recursionDepth, generators)
   member this.WithRecursionDepth(depth: int) = AutoGenConfig(seqRange, Some depth, generators)
@@ -29,7 +29,6 @@ type AutoGenConfig internal (seqRange: Range<int> option, recursionDepth: int op
 module AutoGenConfig =
 
   let private mapGenerators f (config: AutoGenConfig) = config.MapGenerators f
-    // { config with Generators = config.Generators |> f }
 
   let addGenerator (gen: Gen<'a>) =
     mapGenerators (GeneratorCollection.map _.SetItem(typeof<'a>, ([||], fun _ _ -> gen)))
