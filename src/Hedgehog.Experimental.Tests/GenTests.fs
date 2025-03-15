@@ -323,7 +323,7 @@ let ``auto with recursive option members does not cause stack overflow using def
 let ``auto with recursive option members respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x = GenX.autoWith<RecOption> {GenX.defaults with RecursionDepth = depth}
+        let! x = GenX.autoWith<RecOption> (GenX.defaults.WithRecursionDepth depth)
         x.Depth <=! depth
     }
 
@@ -331,7 +331,7 @@ let ``auto with recursive option members respects max recursion depth`` () =
 let ``auto with recursive option members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs = GenX.autoWith<RecOption> {GenX.defaults with RecursionDepth = depth}
+        let! xs = GenX.autoWith<RecOption> (GenX.defaults.WithRecursionDepth depth)
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -355,7 +355,7 @@ let ``auto with recursive array members does not cause stack overflow using defa
 let ``auto with recursive array members respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x = GenX.autoWith<RecArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x = GenX.autoWith<RecArray> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
         x.Depth <=! depth
     }
 
@@ -363,7 +363,7 @@ let ``auto with recursive array members respects max recursion depth`` () =
 let ``auto with recursive array members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs = GenX.autoWith<RecArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs = GenX.autoWith<RecArray> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -387,7 +387,7 @@ let ``auto with recursive list members does not cause stack overflow using defau
 let ``auto with recursive list members respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x = GenX.autoWith<RecList> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x = GenX.autoWith<RecList> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
         x.Depth <=! depth
     }
 
@@ -395,7 +395,7 @@ let ``auto with recursive list members respects max recursion depth`` () =
 let ``auto with recursive list members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs = GenX.autoWith<RecList> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs = GenX.autoWith<RecList> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -419,7 +419,7 @@ let ``auto with recursive ResizeArray members does not cause stack overflow usin
 let ``auto with recursive ResizeArray members respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x = GenX.autoWith<RecResizeArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x = GenX.autoWith<RecResizeArray> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
         x.Depth <=! depth
     }
 
@@ -427,7 +427,7 @@ let ``auto with recursive ResizeArray members respects max recursion depth`` () 
 let ``auto with recursive ResizeArray members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs = GenX.autoWith<RecResizeArray> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs = GenX.autoWith<RecResizeArray> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -451,7 +451,7 @@ let ``auto with recursive Dictionary members does not cause stack overflow using
 let ``auto with recursive Dictionary members respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x = GenX.autoWith<RecDictionary> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x = GenX.autoWith<RecDictionary> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
         x.Depth <=! depth
     }
 
@@ -459,7 +459,7 @@ let ``auto with recursive Dictionary members respects max recursion depth`` () =
 let ``auto with recursive Dictionary members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs = GenX.autoWith<RecDictionary> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs = GenX.autoWith<RecDictionary> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -483,7 +483,7 @@ let ``auto with recursive set members does not cause stack overflow using defaul
 let ``auto with recursive set members respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x = GenX.autoWith<RecSet> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x = GenX.autoWith<RecSet> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
         x.Depth <=! depth
     }
 
@@ -491,7 +491,7 @@ let ``auto with recursive set members respects max recursion depth`` () =
 let ``auto with recursive set members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs = GenX.autoWith<RecSet> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs = GenX.autoWith<RecSet> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -515,7 +515,7 @@ let ``auto with recursive map members does not cause stack overflow using defaul
 let ``auto with recursive map members respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x = GenX.autoWith<RecMap> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x = GenX.autoWith<RecMap> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
         x.Depth <=! depth
     }
 
@@ -523,7 +523,7 @@ let ``auto with recursive map members respects max recursion depth`` () =
 let ``auto with recursive map members generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs = GenX.autoWith<RecMap> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs = GenX.autoWith<RecMap> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
         test <@ xs |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -563,8 +563,8 @@ let ``auto with mutually recursive types does not cause stack overflow using def
 let ``auto with mutually recursive types respects max recursion depth`` () =
     Property.check <| property {
         let! depth = Gen.int32 <| Range.exponential 0 5
-        let! x1 = GenX.autoWith<MutuallyRecursive1> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
-        let! x2 = GenX.autoWith<MutuallyRecursive2> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 0 5}
+        let! x1 = GenX.autoWith<MutuallyRecursive1> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
+        let! x2 = GenX.autoWith<MutuallyRecursive2> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 0 5))
         x1.Depth <=! depth
         x2.Depth <=! depth
     }
@@ -573,9 +573,9 @@ let ``auto with mutually recursive types respects max recursion depth`` () =
 let ``auto with mutually recursive types generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs1 = GenX.autoWith<MutuallyRecursive1> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs1 = GenX.autoWith<MutuallyRecursive1> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
-        let! xs2 = GenX.autoWith<MutuallyRecursive2> {GenX.defaults with RecursionDepth = depth; SeqRange = Range.exponential 1 5}
+        let! xs2 = GenX.autoWith<MutuallyRecursive2> (GenX.defaults.WithRecursionDepth(depth).WithSeqRange(Range.exponential 1 5))
                   |> (Gen.list (Range.singleton 100))
         test <@ xs1 |> List.exists (fun x -> x.Depth = depth) @>
         test <@ xs2 |> List.exists (fun x -> x.Depth = depth) @>
@@ -877,7 +877,7 @@ module ShrinkTests =
   let ``one-dimentional array shrinks correctly when empty disallowed`` () =
     let property = property {
       let! array =
-        { GenX.defaults with SeqRange = Range.constant 2 5 }
+        GenX.defaults.WithSeqRange(Range.constant 2 5)
         |> GenX.autoWith<int []>
       test <@ 1 <> array.[0] @>
     }
@@ -897,7 +897,7 @@ module ShrinkTests =
   let ``two-dimentional array shrinks correctly when empty disallowed`` () =
     let property = property {
       let! array =
-        { GenX.defaults with SeqRange = Range.constant 1 5 }
+        GenX.defaults.WithSeqRange (Range.constant 1 5)
         |> GenX.autoWith<int [,]>
       test <@ 1 <> array.[0,0] @>
     }
@@ -910,7 +910,7 @@ module ShrinkTests =
   let ``auto of ResizeArray shrinks correctly`` () =
     let property = property {
       let! resizeArray =
-        { GenX.defaults with SeqRange = Range.constant 4 4 }
+        GenX.defaults.WithSeqRange(Range.constant 4 4)
         |> GenX.autoWith<ResizeArray<int>>
       test <@ 1 <> resizeArray.[0] @>
     }
@@ -988,7 +988,7 @@ let ``auto can generate record with Nullable fields`` () =
 let ``auto can generate Nullable bool without recursion`` () =
   Property.check <| property {
     let! _ =
-      { GenX.defaults with RecursionDepth = 0 }
+      GenX.defaults.WithRecursionDepth 0
       |> GenX.autoWith<Nullable<bool>>
     ()
   }
@@ -998,7 +998,7 @@ let ``auto can generate seq`` () =
   Property.checkBool <| property {
     let! expectedLen = Gen.int32 (Range.linear 0 105)
     let! xs =
-      { GenX.defaults with SeqRange = Range.singleton expectedLen }
+      GenX.defaults.WithSeqRange(Range.singleton expectedLen)
       |> GenX.autoWith<seq<int>>
 
     return Seq.length xs = expectedLen
@@ -1030,7 +1030,7 @@ type Poodle() =
 
 [<Fact>]
 let ``Type Dog is Shape_CliMutable`` () =
-  let isDogCliMutable = 
+  let isDogCliMutable =
     match TypeShape.Create<Dog> () with
     | Shape.CliMutable _ -> true
     | _ -> false
@@ -1038,7 +1038,7 @@ let ``Type Dog is Shape_CliMutable`` () =
 
 [<Fact>]
 let ``Type Poodle is Shape_CliMutable`` () =
-  let isPoodleCliMutable = 
+  let isPoodleCliMutable =
     match TypeShape.Create<Poodle> () with
     | Shape.CliMutable _ -> true
     | _ -> false

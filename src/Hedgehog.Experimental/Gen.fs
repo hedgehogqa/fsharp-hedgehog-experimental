@@ -18,12 +18,15 @@ type GeneratorCollection =
   // 2. A generator factory, which can be backed by a generic method,
   //    so it takes an array of genetic type parameters,
   //    and an array of arguments to create the generator.
-  private GeneratorCollection of ImmutableDictionary<Type, Type[] * GeneratorFactory>
+  internal GeneratorCollection of ImmutableDictionary<Type, Type[] * GeneratorFactory>
 
 module GeneratorCollection =
 
   let internal unwrap (GeneratorCollection map) = map
   let internal map f = unwrap >> f >> GeneratorCollection
+
+  let internal merge (GeneratorCollection gens1) (GeneratorCollection gens2) =
+    GeneratorCollection (gens1.SetItems(gens2))
 
   let internal addGenerator (targetType: Type) (paramTypes: Type[]) (factory: Type[] -> obj[] -> obj) =
         map _.SetItem(targetType, (paramTypes, factory))
@@ -36,19 +39,33 @@ module GeneratorCollection =
     >> Seq.tryFind (fun (KeyValue (t, _)) -> t |> TypeUtils.satisfies targetType)
     >> Option.map (fun (KeyValue (_, v)) -> v)
 
+type AutoGenConfig internal (seqRange: Range<int> option, recursionDepth: int option, generators: GeneratorCollection) =
+  let defaultSeqRange = Range.exponential 0 50
+  let defaultRecursionDepth = 1
 
-[<CLIMutable>]
-type AutoGenConfig = {
-  SeqRange : Range<int>
-  RecursionDepth: int
-  Generators: GeneratorCollection
-}
+  member this.SeqRange = seqRange |> Option.defaultValue defaultSeqRange
+  member this.RecursionDepth = recursionDepth |> Option.defaultValue defaultRecursionDepth
+  member this.Generators = generators
 
+  member this.WithSeqRange(range: Range<int>) = AutoGenConfig(Some range, recursionDepth, generators)
+  member this.WithRecursionDepth(depth: int) = AutoGenConfig(seqRange, Some depth, generators)
+
+  member internal this.IsSeqRangeDefined = Option.isSome seqRange
+  member internal this.IsRecursionDepthDefined = Option.isSome recursionDepth
+
+  member internal this.MapGenerators f = AutoGenConfig(seqRange, recursionDepth, f generators)
+
+  member this.Merge(other: AutoGenConfig) =
+    AutoGenConfig(
+        (if other.IsSeqRangeDefined then Some other.SeqRange else seqRange),
+        (if other.IsRecursionDepthDefined then Some other.RecursionDepth else recursionDepth),
+        GeneratorCollection.merge this.Generators other.Generators
+    )
 
 module AutoGenConfig =
 
-  let private mapGenerators f config =
-    { config with Generators = config.Generators |> f }
+  let private mapGenerators f (config: AutoGenConfig) = config.MapGenerators f
+    // { config with Generators = config.Generators |> f }
 
   let addGenerator (gen: Gen<'a>) =
     mapGenerators (GeneratorCollection.map _.SetItem(typeof<'a>, ([||], fun _ _ -> gen)))
@@ -415,11 +432,7 @@ module GenX =
         DateTime.MinValue.Ticks
         DateTime.MaxValue.Ticks
       |> Range.map DateTime
-    {
-      SeqRange = Range.exponential 0 50
-      RecursionDepth = 1
-      Generators = GeneratorCollection ImmutableDictionary.Empty
-    }
+    AutoGenConfig(None, None, GeneratorCollection ImmutableDictionary.Empty)
     |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.uint16 <| Range.exponentialBounded ())
@@ -460,7 +473,7 @@ module GenX =
       array
 
   module internal InternalGen =
-    let list<'a> canRecurse autoInner config incrementRecursionDepth =
+    let list<'a> canRecurse autoInner (config: AutoGenConfig) incrementRecursionDepth =
       if canRecurse typeof<'a> then
         autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange
       else
