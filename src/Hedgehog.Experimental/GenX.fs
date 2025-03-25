@@ -333,7 +333,7 @@ module GenX =
         DateTime.MinValue.Ticks
         DateTime.MaxValue.Ticks
       |> Range.map DateTime
-    AutoGenConfig(None, None, GeneratorCollection.empty)
+    AutoGenConfig.defaults
     |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.uint16 <| Range.exponentialBounded ())
@@ -376,7 +376,7 @@ module GenX =
   module internal InternalGen =
     let list<'a> canRecurse autoInner (config: AutoGenConfig) incrementRecursionDepth =
       if canRecurse typeof<'a> then
-        autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange
+        autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list (AutoGenConfig.seqRange config)
       else
         Gen.constant ([]: 'a list)
 
@@ -413,8 +413,8 @@ module GenX =
 
     let canRecurse (t: Type) =
       match recursionDepths.TryFind t.AssemblyQualifiedName with
-      | Some x -> config.RecursionDepth > x
-      | None -> config.RecursionDepth > 0
+      | Some x -> AutoGenConfig.recursionDepth config > x
+      | None -> AutoGenConfig.recursionDepth config > 0
 
     let incrementRecursionDepth (t: Type) =
       match recursionDepths.TryFind t.AssemblyQualifiedName with
@@ -443,7 +443,7 @@ module GenX =
 
     // Check if there is a registered generator factory for a given requested generator.
     // Fallback to the default heuristics if no factory is found.
-    match config.Generators |> GeneratorCollection.tryFindFor typeof<'a> with
+    match config.generators |> GeneratorCollection.tryFindFor typeof<'a> with
     | Some (args, factory) ->
 
       let factoryArgs =
@@ -499,7 +499,8 @@ module GenX =
                 if canRecurse typeof<'a> then
                   gen {
                     let! lengths =
-                      config.SeqRange
+                      config
+                      |> AutoGenConfig.seqRange
                       |> Gen.integral
                       |> List.replicate s.Rank
                       |> ListGen.sequence

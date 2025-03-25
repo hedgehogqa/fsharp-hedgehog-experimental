@@ -19,7 +19,12 @@ type GenExtraExtensions() =
     self |> AutoGenConfig.addGenerators<'T>
 
   [<Extension>]
-  static member WithCollectionRange(self : AutoGenConfig, range : Range<int>) = self.WithSeqRange(range)
+  static member WithCollectionRange(self : AutoGenConfig, range : Range<int>) =
+    self |> AutoGenConfig.setSeqRange range
+
+  [<Extension>]
+  static member WithRecursionDepth(self : AutoGenConfig, depth: int) =
+    self |> AutoGenConfig.setRecursionDepth depth
 
   /// Generates null part of the time.
   [<Extension>]

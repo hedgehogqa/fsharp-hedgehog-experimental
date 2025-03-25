@@ -5,10 +5,10 @@ open System.Collections.Immutable
 
 // A generator factory which can be backed by a generic method.
 // It takes an array of genetic type parameters, and an array of arguments to create the generator.
-type internal GeneratorFactory = Type[] -> obj[] -> obj
+type private GeneratorFactory = Type[] -> obj[] -> obj
 
 [<Struct>]
-type internal GeneratorCollection =
+type GeneratorCollection =
   // A dictionary of generators.
   // The key is a 'required' generator type
   // The value is a tuple of:
@@ -16,7 +16,7 @@ type internal GeneratorCollection =
   // 2. A generator factory, which can be backed by a generic method,
   //    so it takes an array of genetic type parameters,
   //    and an array of arguments to create the generator.
-  GeneratorCollection of ImmutableDictionary<Type, Type[] * GeneratorFactory>
+  private GeneratorCollection of ImmutableDictionary<Type, Type[] * GeneratorFactory>
 
 module internal GeneratorCollection =
 

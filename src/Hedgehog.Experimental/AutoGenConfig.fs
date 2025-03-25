@@ -3,33 +3,44 @@ namespace Hedgehog
 open System
 open System.Reflection
 
-type AutoGenConfig internal (seqRange: Range<int> option, recursionDepth: int option, generators: GeneratorCollection) =
-  let defaultSeqRange = Range.exponential 0 50
-  let defaultRecursionDepth = 1
-
-  member this.SeqRange = seqRange |> Option.defaultValue defaultSeqRange
-  member this.RecursionDepth = recursionDepth |> Option.defaultValue defaultRecursionDepth
-  member internal this.Generators = generators
-
-  member this.WithSeqRange(range: Range<int>) = AutoGenConfig(Some range, recursionDepth, generators)
-  member this.WithRecursionDepth(depth: int) = AutoGenConfig(seqRange, Some depth, generators)
-
-  member internal this.IsSeqRangeDefined = Option.isSome seqRange
-  member internal this.IsRecursionDepthDefined = Option.isSome recursionDepth
-
-  member internal this.MapGenerators f = AutoGenConfig(seqRange, recursionDepth, f generators)
-
-  member this.Merge(other: AutoGenConfig) =
-    AutoGenConfig(
-        (if other.IsSeqRangeDefined then Some other.SeqRange else seqRange),
-        (if other.IsRecursionDepthDefined then Some other.RecursionDepth else recursionDepth),
-        GeneratorCollection.merge this.Generators other.Generators
-    )
+type AutoGenConfig = internal {
+  seqRange: Range<int> option
+  recursionDepth: int option
+  generators: GeneratorCollection
+}
 
 module AutoGenConfig =
 
-  let private mapGenerators f (config: AutoGenConfig) = config.MapGenerators f
+  let private defaultSeqRange = Range.exponential 0 50
+  let private defaultRecursionDepth = 1
 
+  let defaults = {
+    seqRange = Some defaultSeqRange
+    recursionDepth = Some defaultRecursionDepth
+    generators = GeneratorCollection.empty
+  }
+
+  let private mapGenerators f (config: AutoGenConfig) =
+    { config with generators = f config.generators }
+
+  let seqRange (config: AutoGenConfig) = config.seqRange |> Option.defaultValue defaultSeqRange
+  let setSeqRange (range: Range<int>) (config: AutoGenConfig) =
+    { config with seqRange = Some range }
+
+  let recursionDepth (config: AutoGenConfig) = config.recursionDepth |> Option.defaultValue defaultRecursionDepth
+  let setRecursionDepth (depth: int) (config: AutoGenConfig) =
+    { config with recursionDepth = Some depth }
+
+  /// Merge two configurations.
+  /// Values from the second configuration take precedence when they are set.
+  let merge (baseConfig: AutoGenConfig) (extraConfig: AutoGenConfig) =
+    {
+       seqRange = extraConfig.seqRange |> Option.orElse baseConfig.seqRange
+       recursionDepth = extraConfig.recursionDepth |> Option.orElse baseConfig.recursionDepth
+       generators = GeneratorCollection.merge baseConfig.generators extraConfig.generators
+    }
+
+  /// Add a generator to the configuration.
   let addGenerator (gen: Gen<'a>) =
     mapGenerators (GeneratorCollection.map _.SetItem(typeof<'a>, ([||], fun _ _ -> gen)))
 
