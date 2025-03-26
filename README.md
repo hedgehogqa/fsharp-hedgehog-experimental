@@ -43,7 +43,7 @@ let! shuffled = GenX.shuffle lst // e.g. [2; 1; 5; 3; 4]
 
 **Shuffle/permute the case of a string:**
 
-```f#	
+```f#
 let str = "abcde"
 let! shuffled = GenX.shuffleCase str // e.g. "aBCdE"
 ```
@@ -170,11 +170,11 @@ let! chars, f = charListGen |> GenX.withDistinctMapTo intGen
 type Union =
   | Husband of int
   | Wife of string
-  
+
 type Record =
   {Sport: string
    Time: TimeSpan}
-   
+
 // Explicit type parameter may not be necessary if it can be inferred.
 let! union = GenX.auto<Union>
 let! record = GenX.auto<Record>
@@ -194,9 +194,9 @@ let! recursive = GenX.auto<Recursive>
 
 ```f#
 let! myVal =
-  {GenX.defaults with 
-     SeqRange = Range.exponential 1 10
-     RecursionDepth = 2}
+  GenX.defaults
+  |> AutoGenConfig.setSeqRange (Range.exponential 1 10)
+  |> AutoGenConfig.setRecursionDepth 2
   // Will use this generator for all ints
   |> AutoGenConfig.addGenerator (Gen.int (Range.linear 0 10))
   // Will use this generator when generating its return type
