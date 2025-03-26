@@ -15,8 +15,8 @@ module AutoGenConfig =
   let private defaultRecursionDepth = 1
 
   let defaults = {
-    seqRange = Some defaultSeqRange
-    recursionDepth = Some defaultRecursionDepth
+    seqRange = None
+    recursionDepth = None
     generators = GeneratorCollection.empty
   }
 
