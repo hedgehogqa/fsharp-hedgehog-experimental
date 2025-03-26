@@ -10,6 +10,7 @@
     <Compile Include="TypeUtilsTests.fs" />
     <Compile Include="GenTests.fs" />
     <Compile Include="GenericGenTests.fs" />
+    <Compile Include="AutoGenConfigTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
