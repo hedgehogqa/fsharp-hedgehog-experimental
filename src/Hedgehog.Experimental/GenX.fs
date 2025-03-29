@@ -1,89 +1,7 @@
 namespace Hedgehog
 
 open System
-open System.Collections.Immutable
-open System.Reflection
 open TypeShape.Core
-
-// A generator factory which can be backed by a generic method.
-// It takes an array of genetic type parameters, and an array of arguments to create the generator.
-type GeneratorFactory = Type[] -> obj[] -> obj
-
-[<Struct>]
-type GeneratorCollection =
-  // A dictionary of generators.
-  // The key is a 'required' generator type
-  // The value is a tuple of:
-  // 1. An array types of arguments for the generator factory
-  // 2. A generator factory, which can be backed by a generic method,
-  //    so it takes an array of genetic type parameters,
-  //    and an array of arguments to create the generator.
-  private GeneratorCollection of ImmutableDictionary<Type, Type[] * GeneratorFactory>
-
-module GeneratorCollection =
-
-  let internal unwrap (GeneratorCollection map) = map
-  let internal map f = unwrap >> f >> GeneratorCollection
-
-  let internal addGenerator (targetType: Type) (paramTypes: Type[]) (factory: Type[] -> obj[] -> obj) =
-        map _.SetItem(targetType, (paramTypes, factory))
-
-  // Find a generator that can satisfy the given requited type.
-  // It also takes care of finding 'generic' generators (like Either<'a, 'b>)
-  // to satisfy specific types (like Either<int, string>).
-  let internal tryFindFor (targetType: Type) =
-    unwrap
-    >> Seq.tryFind (fun (KeyValue (t, _)) -> t |> TypeUtils.satisfies targetType)
-    >> Option.map (fun (KeyValue (_, v)) -> v)
-
-
-[<CLIMutable>]
-type AutoGenConfig = {
-  SeqRange : Range<int>
-  RecursionDepth: int
-  Generators: GeneratorCollection
-}
-
-
-module AutoGenConfig =
-
-  let private mapGenerators f config =
-    { config with Generators = config.Generators |> f }
-
-  let addGenerator (gen: Gen<'a>) =
-    mapGenerators (GeneratorCollection.map _.SetItem(typeof<'a>, ([||], fun _ _ -> gen)))
-
-  /// Add generators from a given type.
-  /// The type is expected to have static methods that return Gen<'a>.
-  /// These methods can have parameters which are required to be of type Gen<_>.
-  let addGenerators<'a> (config: AutoGenConfig) =
-      let isGen (t: Type) =
-          t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Gen<_>>
-
-      let tryUnwrapGenParameters (methodInfo: MethodInfo) : Option<Type[]> =
-          methodInfo.GetParameters()
-          |> Array.fold (fun acc param ->
-              match acc, isGen param.ParameterType with
-              | Some types, true ->
-                  Some (Array.append types [| param.ParameterType.GetGenericArguments().[0] |])
-              | _ -> None
-          ) (Some [||])
-
-      typeof<'a>.GetMethods(BindingFlags.Static ||| BindingFlags.Public)
-      |> Seq.choose (fun methodInfo ->
-          match isGen methodInfo.ReturnType, tryUnwrapGenParameters methodInfo with
-          | true, Some typeArray ->
-              let targetType = methodInfo.ReturnType.GetGenericArguments().[0]
-              let factory: Type[] -> obj[] -> obj = fun types gens ->
-                  let methodToCall =
-                      if Array.isEmpty types then methodInfo
-                      else methodInfo.MakeGenericMethod(types)
-                  methodToCall.Invoke(null, gens)
-              Some (targetType, typeArray, factory)
-          | _ -> None)
-      |> Seq.fold (fun cfg (targetType, typeArray, factory) ->
-          cfg |> mapGenerators (GeneratorCollection.addGenerator targetType typeArray factory))
-          config
 
 module GenX =
 
@@ -415,11 +333,7 @@ module GenX =
         DateTime.MinValue.Ticks
         DateTime.MaxValue.Ticks
       |> Range.map DateTime
-    {
-      SeqRange = Range.exponential 0 50
-      RecursionDepth = 1
-      Generators = GeneratorCollection ImmutableDictionary.Empty
-    }
+    AutoGenConfig.defaults
     |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
     |> AutoGenConfig.addGenerator (Gen.uint16 <| Range.exponentialBounded ())
@@ -460,9 +374,9 @@ module GenX =
       array
 
   module internal InternalGen =
-    let list<'a> canRecurse autoInner config incrementRecursionDepth =
+    let list<'a> canRecurse autoInner (config: AutoGenConfig) incrementRecursionDepth =
       if canRecurse typeof<'a> then
-        autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list config.SeqRange
+        autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list (AutoGenConfig.seqRange config)
       else
         Gen.constant ([]: 'a list)
 
@@ -499,8 +413,8 @@ module GenX =
 
     let canRecurse (t: Type) =
       match recursionDepths.TryFind t.AssemblyQualifiedName with
-      | Some x -> config.RecursionDepth > x
-      | None -> config.RecursionDepth > 0
+      | Some x -> AutoGenConfig.recursionDepth config > x
+      | None -> AutoGenConfig.recursionDepth config > 0
 
     let incrementRecursionDepth (t: Type) =
       match recursionDepths.TryFind t.AssemblyQualifiedName with
@@ -529,7 +443,7 @@ module GenX =
 
     // Check if there is a registered generator factory for a given requested generator.
     // Fallback to the default heuristics if no factory is found.
-    match config.Generators |> GeneratorCollection.tryFindFor typeof<'a> with
+    match config.generators |> GeneratorCollection.tryFindFor typeof<'a> with
     | Some (args, factory) ->
 
       let factoryArgs =
@@ -585,7 +499,8 @@ module GenX =
                 if canRecurse typeof<'a> then
                   gen {
                     let! lengths =
-                      config.SeqRange
+                      config
+                      |> AutoGenConfig.seqRange
                       |> Gen.integral
                       |> List.replicate s.Rank
                       |> ListGen.sequence
