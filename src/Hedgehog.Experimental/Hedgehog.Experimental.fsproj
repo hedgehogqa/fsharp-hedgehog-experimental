@@ -13,7 +13,7 @@
     <PackageProjectUrl>https://github.com/cmeeren/fsharp-hedgehog-experimental</PackageProjectUrl>
     <PackageTags>f# fsharp testing</PackageTags>
     <PackageIcon>SQUARE_hedgehog_128x128.png</PackageIcon>
-    <Version>0.8.0</Version>
+    <Version>0.9.0</Version>
     <PackageReleaseNotes>https://github.com/hedgehogqa/fsharp-hedgehog-experimental/blob/master/CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 

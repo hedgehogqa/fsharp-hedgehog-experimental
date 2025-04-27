@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.9.0 (2025-04-27)
+
+* `AutoGenConfig` values can now me merged
+
 ### 0.8.0 (2025-03-08)
 
 * Added support for registering generators for generic types in `AutoGenConfig`.
