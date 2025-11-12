@@ -48,11 +48,15 @@ module AutoGenConfig =
   /// The type is expected to have static methods that return Gen<_>.
   /// These methods can have parameters which are required to be of type Gen<_>.
   let addGenerators<'a> (config: AutoGenConfig) =
-      let isGen (t: Type) =
-          t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Gen<_>>
+      let getGenType (t: Type) =
+          if t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Gen<_>>
+            then Some (t.GetGenericArguments().[0])
+            else None
 
-      let isAutoGenConfig (t: Type) =
-          t = typeof<AutoGenConfig>
+      let getAutoGenConfigType (t: Type) =
+          if t = typeof<AutoGenConfig>
+            then Some t
+            else None
 
       let tryUnwrapParameters (methodInfo: MethodInfo) : Option<Type[]> =
           methodInfo.GetParameters()
@@ -60,22 +64,15 @@ module AutoGenConfig =
               match acc with
               | None -> None
               | Some types ->
-                  if isGen param.ParameterType then
-                      // For Gen<T>, extract T
-                      Some (Array.append types [| param.ParameterType.GetGenericArguments().[0] |])
-                  elif isAutoGenConfig param.ParameterType then
-                      // For AutoGenConfig, keep it as is
-                      Some (Array.append types [| param.ParameterType |])
-                  else
-                      None
+                  getGenType param.ParameterType
+                    |> Option.orElseWith (fun () -> getAutoGenConfigType param.ParameterType)
+                    |> Option.map (fun t -> Array.append types [| t |])
           ) (Some [||])
-
 
       typeof<'a>.GetMethods(BindingFlags.Static ||| BindingFlags.Public)
       |> Seq.choose (fun methodInfo ->
-          match isGen methodInfo.ReturnType, tryUnwrapParameters methodInfo with
-          | true, Some typeArray ->
-              let targetType = methodInfo.ReturnType.GetGenericArguments().[0]
+          match getGenType methodInfo.ReturnType, tryUnwrapParameters methodInfo with
+          | Some targetType, Some typeArray ->
               let factory: Type[] -> obj[] -> obj = fun types args ->
                   let methodToCall =
                       if Array.isEmpty types then methodInfo
