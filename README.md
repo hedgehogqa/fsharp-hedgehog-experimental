@@ -205,6 +205,28 @@ let! myVal =
   |> GenX.autoWith<MyType>
 ```
 
+**Register generators for generic types in `AutoGenConfig`:**
+
+```f#
+// An example of a generic type
+type Maybe<'a> = Just of 'a | Nothing
+
+// a type containing generators for generic types
+// methods should return Gen<_> and are allowed to take Gen<_> and AutoGenConfig as parameters
+type GenericGenerators =
+  // Generator for Maybe<'a>
+  static member MaybeGen<'a>(valueGen : Gen<'a>) : Gen<Maybe<'a>> =
+     Gen.frequency [
+        1, Gen.constant None
+        8, valueGen
+      ]
+     
+let! myVal =
+  GenX.defaults
+  |> AutoGenConfig.addGenerators<GenericGenerators>
+  |> GenX.autoWith<Maybe<int>>
+```
+
 If you’re not happy with the auto-gen defaults, you can of course create your own generator that calls `GenX.autoWith` with your chosen config and use that everywhere.
 
 Deployment checklist
