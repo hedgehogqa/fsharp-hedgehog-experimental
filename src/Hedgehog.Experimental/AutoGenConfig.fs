@@ -51,25 +51,36 @@ module AutoGenConfig =
       let isGen (t: Type) =
           t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Gen<_>>
 
-      let tryUnwrapGenParameters (methodInfo: MethodInfo) : Option<Type[]> =
+      let isAutoGenConfig (t: Type) =
+          t = typeof<AutoGenConfig>
+
+      let tryUnwrapParameters (methodInfo: MethodInfo) : Option<Type[]> =
           methodInfo.GetParameters()
           |> Array.fold (fun acc param ->
-              match acc, isGen param.ParameterType with
-              | Some types, true ->
-                  Some (Array.append types [| param.ParameterType.GetGenericArguments().[0] |])
-              | _ -> None
+              match acc with
+              | None -> None
+              | Some types ->
+                  if isGen param.ParameterType then
+                      // For Gen<T>, extract T
+                      Some (Array.append types [| param.ParameterType.GetGenericArguments().[0] |])
+                  elif isAutoGenConfig param.ParameterType then
+                      // For AutoGenConfig, keep it as is
+                      Some (Array.append types [| param.ParameterType |])
+                  else
+                      None
           ) (Some [||])
+
 
       typeof<'a>.GetMethods(BindingFlags.Static ||| BindingFlags.Public)
       |> Seq.choose (fun methodInfo ->
-          match isGen methodInfo.ReturnType, tryUnwrapGenParameters methodInfo with
+          match isGen methodInfo.ReturnType, tryUnwrapParameters methodInfo with
           | true, Some typeArray ->
               let targetType = methodInfo.ReturnType.GetGenericArguments().[0]
-              let factory: Type[] -> obj[] -> obj = fun types gens ->
+              let factory: Type[] -> obj[] -> obj = fun types args ->
                   let methodToCall =
                       if Array.isEmpty types then methodInfo
                       else methodInfo.MakeGenericMethod(types)
-                  methodToCall.Invoke(null, gens)
+                  methodToCall.Invoke(null, args)
               Some (targetType, typeArray, factory)
           | _ -> None)
       |> Seq.fold (fun cfg (targetType, typeArray, factory) ->

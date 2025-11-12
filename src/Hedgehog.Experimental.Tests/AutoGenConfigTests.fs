@@ -45,3 +45,59 @@ let ``merging AutoGenConfig overrides values``() =
   }
 
   Property.check property
+
+type CustomType = { Value: int; Items: string list }
+
+type CustomGenerators =
+  // Generator that uses AutoGenConfig to access seqRange
+  static member CustomTypeGen(config: AutoGenConfig) : Gen<CustomType> = gen {
+    let! value = Gen.int32 (Range.exponentialBounded())
+    let! items = Gen.string (Range.linear 1 5) Gen.alpha |> Gen.list (AutoGenConfig.seqRange config)
+    return { Value = value; Items = items }
+  }
+
+  // Generator that takes both AutoGenConfig and Gen<_> parameters
+  static member CustomTypeWithGen(config: AutoGenConfig, genValue: Gen<int>) : Gen<CustomType> = gen {
+    let! value = genValue
+    let! items = Gen.string (Range.linear 1 5) Gen.alpha |> Gen.list (AutoGenConfig.seqRange config)
+    return { Value = value; Items = items }
+  }
+
+[<Fact>]
+let ``addGenerators supports methods with AutoGenConfig parameter``() =
+  let customConfig =
+    GenX.defaults
+    |> AutoGenConfig.setSeqRange (Range.constant 3 3)
+    |> AutoGenConfig.addGenerators<CustomGenerators>
+
+  // Create the generator and sample a value to ensure it works
+  let gen = customConfig |> GenX.autoWith<CustomType>
+  let sample = Gen.sample 0 1 gen |> Seq.head
+  test <@ sample.Items.Length = 3 @>
+
+open System.Collections.Immutable
+
+type ImmutableListGenerators =
+  // Generic generator for ImmutableList<T> that uses AutoGenConfig's seqRange
+  static member ImmutableListGen<'T>(config: AutoGenConfig, genItem: Gen<'T>) : Gen<ImmutableList<'T>> = gen {
+    let! items = genItem |> Gen.list (AutoGenConfig.seqRange config)
+    return items |> ImmutableList.CreateRange
+  }
+
+[<Fact>]
+let ``addGenerators supports generic methods with AutoGenConfig and Gen parameters``() =
+  let customConfig =
+    GenX.defaults
+    |> AutoGenConfig.setSeqRange (Range.constant 5 5)
+    |> AutoGenConfig.addGenerators<ImmutableListGenerators>
+
+  // The ImmutableListGen<int> will be called with config and Gen<int>
+  // This demonstrates that generic generators work with both AutoGenConfig and Gen<T> parameters
+  let gen = customConfig |> GenX.autoWith<ImmutableList<int>>
+  let sample = Gen.sample 0 1 gen |> Seq.head
+  test <@ sample.Count = 5 @>
+
+  // Also test with a different type to verify generics work
+  let genString = customConfig |> GenX.autoWith<ImmutableList<string>>
+  let sampleString = Gen.sample 0 1 genString |> Seq.head
+  test <@ sampleString.Count = 5 @>

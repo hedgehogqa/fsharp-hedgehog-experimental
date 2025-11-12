@@ -19,6 +19,10 @@ type GenExtraExtensions() =
     self |> AutoGenConfig.addGenerators<'T>
 
   [<Extension>]
+  static member GetCollectionRange(self : AutoGenConfig) =
+    AutoGenConfig.seqRange self
+
+  [<Extension>]
   static member WithCollectionRange(self : AutoGenConfig, range : Range<int>) =
     self |> AutoGenConfig.setSeqRange range
 

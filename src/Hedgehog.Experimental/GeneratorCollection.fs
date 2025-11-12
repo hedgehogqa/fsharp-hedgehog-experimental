@@ -4,7 +4,7 @@ open System
 open System.Collections.Immutable
 
 // A generator factory which can be backed by a generic method.
-// It takes an array of genetic type parameters, and an array of arguments to create the generator.
+// It takes an array of genetic type parameters and an array of arguments to create the generator.
 type private GeneratorFactory = Type[] -> obj[] -> obj
 
 [<Struct>]
