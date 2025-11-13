@@ -1,5 +1,6 @@
 using System.Linq;
 using System;
+using System.Collections.Immutable;
 using Xunit;
 using static Hedgehog.Linq.Property;
 
@@ -55,6 +56,12 @@ public sealed class GenericTestGenerators
 
   public static Gen<Either<TLeft, TRight>> AlwaysLeft<TLeft, TRight>(Gen<TRight> genB, Gen<TLeft> genA) =>
     genA.Select(Either<TLeft, TRight> (value) => new Either<TLeft, TRight>.Left(value));
+
+  // Generator for ImmutableList<T> that uses AutoGenConfig's seqRange
+  public static Gen<ImmutableList<T>> ImmutableListGen<T>(AutoGenConfig config, Gen<T> genItem) =>
+    genItem
+      .List(config.GetCollectionRange())
+      .Select(ImmutableList.CreateRange);
 }
 
 public class GenericGenTests
@@ -135,5 +142,26 @@ public class GenericGenTests
         _ => throw new InvalidOperationException("C# cannot do exhaustive matching")
       };
     prop.Check();
+  }
+
+  [Fact]
+  public void ShouldGenerateImmutableListUsingAutoGenConfigParameter()
+  {
+    var config = GenX.defaults
+      .WithCollectionRange(Range.FromValue(7))
+      .WithGenerators<GenericTestGenerators>();
+
+    // The ImmutableListGen<int> will be called with config and Gen<int>
+    // This demonstrates that generators can receive AutoGenConfig to access configuration
+    var prop = from x in ForAll(GenX.autoWith<ImmutableList<int>>(config))
+               select x.Count == 7;
+
+    prop.Check();
+
+    // Also test with a different type to verify generics work
+    var propString = from x in ForAll(GenX.autoWith<ImmutableList<string>>(config))
+                     select x.Count == 7;
+
+    propString.Check();
   }
 }

@@ -48,28 +48,36 @@ module AutoGenConfig =
   /// The type is expected to have static methods that return Gen<_>.
   /// These methods can have parameters which are required to be of type Gen<_>.
   let addGenerators<'a> (config: AutoGenConfig) =
-      let isGen (t: Type) =
-          t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Gen<_>>
+      let getGenType (t: Type) =
+          if t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Gen<_>>
+            then Some (t.GetGenericArguments().[0])
+            else None
 
-      let tryUnwrapGenParameters (methodInfo: MethodInfo) : Option<Type[]> =
+      let getAutoGenConfigType (t: Type) =
+          if t = typeof<AutoGenConfig>
+            then Some t
+            else None
+
+      let tryUnwrapParameters (methodInfo: MethodInfo) : Option<Type[]> =
           methodInfo.GetParameters()
           |> Array.fold (fun acc param ->
-              match acc, isGen param.ParameterType with
-              | Some types, true ->
-                  Some (Array.append types [| param.ParameterType.GetGenericArguments().[0] |])
-              | _ -> None
+              match acc with
+              | None -> None
+              | Some types ->
+                  getGenType param.ParameterType
+                    |> Option.orElseWith (fun () -> getAutoGenConfigType param.ParameterType)
+                    |> Option.map (fun t -> Array.append types [| t |])
           ) (Some [||])
 
       typeof<'a>.GetMethods(BindingFlags.Static ||| BindingFlags.Public)
       |> Seq.choose (fun methodInfo ->
-          match isGen methodInfo.ReturnType, tryUnwrapGenParameters methodInfo with
-          | true, Some typeArray ->
-              let targetType = methodInfo.ReturnType.GetGenericArguments().[0]
-              let factory: Type[] -> obj[] -> obj = fun types gens ->
+          match getGenType methodInfo.ReturnType, tryUnwrapParameters methodInfo with
+          | Some targetType, Some typeArray ->
+              let factory: Type[] -> obj[] -> obj = fun types args ->
                   let methodToCall =
                       if Array.isEmpty types then methodInfo
                       else methodInfo.MakeGenericMethod(types)
-                  methodToCall.Invoke(null, gens)
+                  methodToCall.Invoke(null, args)
               Some (targetType, typeArray, factory)
           | _ -> None)
       |> Seq.fold (fun cfg (targetType, typeArray, factory) ->

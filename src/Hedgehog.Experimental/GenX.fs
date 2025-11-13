@@ -368,7 +368,7 @@ module GenX =
             array.SetValue(en.Current, currentIndices)
         | currentLength :: remainingLengths ->
             for i in 0..currentLength - 1 do
-              currentIndices.[currentDimensionIndex] <- i
+              currentIndices[currentDimensionIndex] <- i
               loop (currentDimensionIndex + 1) remainingLengths
       loop 0 lengths
       array
@@ -385,11 +385,15 @@ module GenX =
     let addGenMsg = "You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto."
     let unsupportedTypeException = NotSupportedException (sprintf "Unable to auto-generate %s. %s" typeof<'a>.FullName addGenMsg)
 
+    // Prevent auto-generating AutoGenConfig itself - it should only be passed as a parameter
+    if typeof<'a> = typeof<AutoGenConfig> then
+      raise (NotSupportedException "Cannot auto-generate AutoGenConfig type. It should be provided as a parameter to generator methods.")
+
     let genPoco (shape: ShapePoco<'a>) =
       let bestCtor =
         shape.Constructors
-        |> Seq.filter (fun c -> c.IsPublic)
-        |> Seq.sortBy (fun c -> c.Arity)
+        |> Seq.filter _.IsPublic
+        |> Seq.sortBy _.Arity
         |> Seq.tryHead
 
       match bestCtor with
@@ -458,10 +462,10 @@ module GenX =
                   if arg.IsGenericParameter then
                     typeArgs
                     |> Array.tryFind (fun p -> p.argTypeDefinition.Name = arg.Name)
-                    |> Option.map (_.argType)
+                    |> Option.map _.argType
                     |> Option.defaultWith (fun _ -> raise unsupportedTypeException)
                   else arg)
-          {| genericTypes = typeArgs |> Array.map (_.argType); argumentTypes = argTypes |}
+          {| genericTypes = typeArgs |> Array.map _.argType; argumentTypes = argTypes |}
 
         | _ -> {| genericTypes = Array.empty; argumentTypes = args |}
 
@@ -470,10 +474,15 @@ module GenX =
       let targetArgs =
         factoryArgs.argumentTypes
         |> Array.map (fun t ->
-          let ts = TypeShape.Create(t)
-          ts.Accept { new ITypeVisitor<obj> with
-            member __.Visit<'b> () = autoInner<'b> config recursionDepths |> box
-          })
+          // Check if this is AutoGenConfig type
+          if t = typeof<AutoGenConfig> then
+            box config
+          else
+            // Otherwise, generate a value for this type
+            let ts = TypeShape.Create(t)
+            ts.Accept { new ITypeVisitor<obj> with
+              member __.Visit<'b> () = autoInner<'b> config recursionDepths |> box
+            })
 
       let resGen = factory factoryArgs.genericTypes targetArgs
       resGen |> unbox<Gen<'a>>
@@ -560,8 +569,8 @@ module GenX =
                  |> ListGen.traverse memberSetterGenerator)
             gen {
               let! caseIdx = Gen.integral <| Range.constant 0 (cases.Length - 1)
-              let! fs = cases.[caseIdx]
-              return fs |> List.fold (|>) (shape.UnionCases.[caseIdx].CreateUninitialized ())
+              let! fs = cases[caseIdx]
+              return fs |> List.fold (|>) (shape.UnionCases[caseIdx].CreateUninitialized ())
             }
 
         | Shape.Enum _ ->
