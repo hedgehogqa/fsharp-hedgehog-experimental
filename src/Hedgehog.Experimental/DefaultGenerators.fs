@@ -36,7 +36,7 @@ type DefaultGenerators =
         if recursionContext.CanRecurse then
             valueGen |> Gen.list (AutoGenConfig.seqRange config) |> Gen.map ImmutableList.CreateRange
         else
-            Gen.constant (ImmutableList<'a>.Empty)
+            Gen.constant ImmutableList<'a>.Empty
 
     static member IImmutableList<'a>(config: AutoGenConfig, recursionContext: RecursionContext, valueGen: Gen<'a>) : Gen<IImmutableList<'a>> =
         if recursionContext.CanRecurse then

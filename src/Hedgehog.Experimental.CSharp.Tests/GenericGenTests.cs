@@ -34,6 +34,8 @@ public sealed class OuterClass
   public Maybe<Guid> Value { get; set; }
 }
 
+public sealed record RecursiveRec(Maybe<RecursiveRec> Value);
+
 public sealed class GenericTestGenerators
 {
   public static Gen<Guid> Guid() =>
@@ -51,8 +53,10 @@ public sealed class GenericTestGenerators
   public static Gen<Name> NameGen(Gen<string> gen) =>
     gen.Select(value => new Name("Name: " + value));
 
-  public static Gen<Maybe<T>> AlwaysJust<T>(Gen<T> gen) =>
-    gen.Select(Maybe<T> (value) => new Maybe<T>.Just(value));
+  public static Gen<Maybe<T>> AlwaysJust<T>(AutoGenConfig config, RecursionContext recCtx, Gen<T> gen) =>
+    recCtx.CanRecurse
+      ? gen.Select(Maybe<T> (value) => new Maybe<T>.Just(value))
+      : Gen.FromValue<Maybe<T>>(new Maybe<T>.Nothing());
 
   public static Gen<Either<TLeft, TRight>> AlwaysLeft<TLeft, TRight>(Gen<TRight> genB, Gen<TLeft> genA) =>
     genA.Select(Either<TLeft, TRight> (value) => new Either<TLeft, TRight>.Left(value));
@@ -62,6 +66,16 @@ public class GenericGenTests
 {
   private static bool IsCustomGuid(Guid guid) =>
     new Span<byte>(guid.ToByteArray(), 0, 4).ToArray().All(b => b == 0);
+
+  [Fact]
+  public void ShouldGenerateRecursiveRecords()
+  {
+    var config = GenX.defaults.WithGenerators<GenericTestGenerators>();
+    var prop = from x in ForAll(GenX.autoWith<RecursiveRec>(config))
+               select x != null;
+
+    prop.Check();
+  }
 
   [Fact]
   public void ShouldGenerateValueWithPhantomGenericType_Id()
@@ -145,8 +159,6 @@ public class GenericGenTests
       .WithCollectionRange(Range.FromValue(7))
       .WithGenerators<GenericTestGenerators>();
 
-    // The ImmutableListGen<int> will be called with config and Gen<int>
-    // This demonstrates that generators can receive AutoGenConfig to access configuration
     var prop = from x in ForAll(GenX.autoWith<ImmutableList<int>>(config))
                select x.Count == 7;
 

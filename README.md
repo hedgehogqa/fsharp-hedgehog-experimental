@@ -208,23 +208,29 @@ let! myVal =
 **Register generators for generic types in `AutoGenConfig`:**
 
 ```f#
-// An example of a generic type
-type Maybe<'a> = Just of 'a | Nothing
-
 // a type containing generators for generic types
 // methods should return Gen<_> and are allowed to take Gen<_> and AutoGenConfig as parameters
 type GenericGenerators =
-  // Generator for Maybe<'a>
-  static member MaybeGen<'a>(valueGen : Gen<'a>) : Gen<Maybe<'a>> =
-     Gen.frequency [
-        1, Gen.constant None
-        8, valueGen
-      ]
+  
+  // Generate generic types
+  static member MyGenericType<'a>(valueGen : Gen<'a>) : Gen<MyGenericType<'a>> =
+     valueGen | Gen.map (fun x -> MyGenericType(x))
      
-let! myVal =
+  // Generate generic types with recursion support and access to AutoGenConfig
+  static member ImmutableList<'a>(config: AutoGenConfig, recursionContext: RecursionContext, valueGen: Gen<'a>) : Gen<ImmutableList<'a>> =
+    if recursionContext.CanRecurse then
+      valueGen |> Gen.list (AutoGenConfig.seqRange config) |> Gen.map ImmutableList.CreateRange
+    else
+      Gen.constant ImmutableList<'a>.Empty
+     
+// register the generic generators in AutoGenConfig
+let config =
   GenX.defaults
   |> AutoGenConfig.addGenerators<GenericGenerators>
-  |> GenX.autoWith<Maybe<int>>
+  
+// use the config to auto-generate types containing generic types
+let! myGenericType = GenX.autoWith<MyGenericTypes> config
+let! myImmutableList = GenX.autoWith<ImmutableList<int>> config
 ```
 
 If you’re not happy with the auto-gen defaults, you can of course create your own generator that calls `GenX.autoWith` with your chosen config and use that everywhere.
