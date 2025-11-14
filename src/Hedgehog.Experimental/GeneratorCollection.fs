@@ -34,7 +34,8 @@ module internal GeneratorCollection =
   // Find a generator that can satisfy the given requited type.
   // It also takes care of finding 'generic' generators (like Either<'a, 'b>)
   // to satisfy specific types (like Either<int, string>).
+  // Returns the registered target type along with the args and factory.
   let tryFindFor (targetType: Type) =
     unwrap
     >> Seq.tryFind (fun (KeyValue (t, _)) -> t |> TypeUtils.satisfies targetType)
-    >> Option.map (fun (KeyValue (_, v)) -> v)
+    >> Option.map (fun (KeyValue (k, v)) -> (k, v))

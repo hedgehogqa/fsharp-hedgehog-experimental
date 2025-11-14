@@ -56,12 +56,6 @@ public sealed class GenericTestGenerators
 
   public static Gen<Either<TLeft, TRight>> AlwaysLeft<TLeft, TRight>(Gen<TRight> genB, Gen<TLeft> genA) =>
     genA.Select(Either<TLeft, TRight> (value) => new Either<TLeft, TRight>.Left(value));
-
-  // Generator for ImmutableList<T> that uses AutoGenConfig's seqRange
-  public static Gen<ImmutableList<T>> ImmutableListGen<T>(AutoGenConfig config, Gen<T> genItem) =>
-    genItem
-      .List(config.GetCollectionRange())
-      .Select(ImmutableList.CreateRange);
 }
 
 public class GenericGenTests

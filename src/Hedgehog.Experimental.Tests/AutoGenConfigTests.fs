@@ -1,5 +1,6 @@
 module Hedgehog.Experimental.Tests.AutoGenConfigTests
 
+open Hedgehog.Experimental
 open Xunit
 open Swensen.Unquote
 open Hedgehog
@@ -78,11 +79,9 @@ let ``addGenerators supports methods with AutoGenConfig parameter``() =
 open System.Collections.Immutable
 
 type ImmutableListGenerators =
-  // Generic generator for ImmutableList<T> that uses AutoGenConfig's seqRange
-  static member ImmutableListGen<'T>(config: AutoGenConfig, genItem: Gen<'T>) : Gen<ImmutableList<'T>> = gen {
-    let! items = genItem |> Gen.list (AutoGenConfig.seqRange config)
-    return items |> ImmutableList.CreateRange
-  }
+  static member ImmutableListGen<'T>(config: AutoGenConfig, genItem: Gen<'T>) : Gen<ImmutableList<'T>> =
+    genItem |> Gen.list (AutoGenConfig.seqRange config) |> Gen.map ImmutableList.CreateRange
+
 
 [<Fact>]
 let ``addGenerators supports generic methods with AutoGenConfig and Gen parameters``() =

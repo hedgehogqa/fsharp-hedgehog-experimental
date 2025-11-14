@@ -3,6 +3,13 @@ namespace Hedgehog
 open System
 open System.Reflection
 
+/// Provides recursion depth information for the currently generated type.
+/// Can be used by custom generators to respect recursion limits.
+[<Sealed>]
+type RecursionContext(canRecurse: bool) =
+  /// Indicates whether recursion is allowed for the current type being generated.
+  member _.CanRecurse = canRecurse
+
 type AutoGenConfig = internal {
   seqRange: Range<int> option
   recursionDepth: int option
@@ -58,6 +65,11 @@ module AutoGenConfig =
             then Some t
             else None
 
+      let getRecursionContextType (t: Type) =
+          if t = typeof<RecursionContext>
+            then Some t
+            else None
+
       let tryUnwrapParameters (methodInfo: MethodInfo) : Option<Type[]> =
           methodInfo.GetParameters()
           |> Array.fold (fun acc param ->
@@ -66,6 +78,7 @@ module AutoGenConfig =
               | Some types ->
                   getGenType param.ParameterType
                     |> Option.orElseWith (fun () -> getAutoGenConfigType param.ParameterType)
+                    |> Option.orElseWith (fun () -> getRecursionContextType param.ParameterType)
                     |> Option.map (fun t -> Array.append types [| t |])
           ) (Some [||])
 

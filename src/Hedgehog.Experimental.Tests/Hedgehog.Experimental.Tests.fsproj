@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="ComplexGenericTest.fs" />
+    <Compile Include="OrTypeTest.fs" />
     <Compile Include="TypeUtilsTests.fs" />
     <Compile Include="GenTests.fs" />
     <Compile Include="GenericGenTests.fs" />

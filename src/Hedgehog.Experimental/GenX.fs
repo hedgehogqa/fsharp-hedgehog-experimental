@@ -1,6 +1,8 @@
 namespace Hedgehog
 
 open System
+open Hedgehog
+open Hedgehog.Experimental
 open TypeShape.Core
 
 module GenX =
@@ -327,29 +329,8 @@ module GenX =
     }
 
   let defaults =
-    let dateTimeRange =
-      Range.exponentialFrom
-        (DateTime(2000, 1, 1)).Ticks
-        DateTime.MinValue.Ticks
-        DateTime.MaxValue.Ticks
-      |> Range.map DateTime
     AutoGenConfig.defaults
-    |> AutoGenConfig.addGenerator (Gen.byte <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.int16 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.uint16 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.int32 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.uint32 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.int64 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.uint64 <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.double (Range.exponentialFrom 0. (float Single.MinValue) (float Single.MaxValue)) |> Gen.map single)
-    |> AutoGenConfig.addGenerator (Gen.double <| Range.exponentialBounded ())
-    |> AutoGenConfig.addGenerator (Gen.double (Range.exponentialFrom 0. (float Decimal.MinValue) (float Decimal.MaxValue)) |> Gen.map decimal)
-    |> AutoGenConfig.addGenerator Gen.bool
-    |> AutoGenConfig.addGenerator Gen.guid
-    |> AutoGenConfig.addGenerator Gen.latin1
-    |> AutoGenConfig.addGenerator (Gen.string (Range.linear 0 50) Gen.latin1)
-    |> AutoGenConfig.addGenerator (Gen.dateTime dateTimeRange)
-    |> AutoGenConfig.addGenerator (Gen.dateTime dateTimeRange |> Gen.map DateTimeOffset)
+    |> AutoGenConfig.addGenerators<DefaultGenerators>
     |> AutoGenConfig.addGenerator uri
 
   module internal MultidimensionalArray =
@@ -373,13 +354,6 @@ module GenX =
       loop 0 lengths
       array
 
-  module internal InternalGen =
-    let list<'a> canRecurse autoInner (config: AutoGenConfig) incrementRecursionDepth =
-      if canRecurse typeof<'a> then
-        autoInner config (incrementRecursionDepth typeof<'a>) |> Gen.list (AutoGenConfig.seqRange config)
-      else
-        Gen.constant ([]: 'a list)
-
   let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
     let addGenMsg = "You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto."
@@ -389,254 +363,254 @@ module GenX =
     if typeof<'a> = typeof<AutoGenConfig> then
       raise (NotSupportedException "Cannot auto-generate AutoGenConfig type. It should be provided as a parameter to generator methods.")
 
-    let genPoco (shape: ShapePoco<'a>) =
-      let bestCtor =
-        shape.Constructors
-        |> Seq.filter _.IsPublic
-        |> Seq.sortBy _.Arity
-        |> Seq.tryHead
+    let currentTypeRecursionLevel =
+      recursionDepths.TryFind typeof<'a>.AssemblyQualifiedName |> Option.defaultValue 0
 
-      match bestCtor with
-      | None -> failwithf "Class %O lacks a public constructor" typeof<'a>
-      | Some ctor ->
-        ctor.Accept {
-        new IConstructorVisitor<'a, Gen<(unit -> 'a)>> with
-          member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-            autoInner config recursionDepths
-            |> Gen.map (fun args ->
-                let delayedCtor () =
-                  try
-                    ctor.Invoke args
-                  with
-                    | ex ->
-                      ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args addGenMsg, ex)
-                      |> raise
-                delayedCtor
+    // Check if we can recurse for the current type
+    // This tells the container generator whether it should generate elements or return empty
+    let canRecurseForElements = currentTypeRecursionLevel < AutoGenConfig.recursionDepth config
+
+    if currentTypeRecursionLevel > AutoGenConfig.recursionDepth config then
+      Gen.delay (fun () ->
+        raise (InvalidOperationException(
+          sprintf "Recursion depth limit %d exceeded for type %s. " (AutoGenConfig.recursionDepth config) typeof<'a>.FullName +
+          "To fix this, add a RecursionContext parameter to your generator method and use recursionContext.CanRecurse to control recursion.")))
+    else
+
+      // Increment recursion depth for this type before generating element types
+      let newRecursionDepths = recursionDepths.Add(typeof<'a>.AssemblyQualifiedName, currentTypeRecursionLevel + 1)
+
+      // Check recursion depth at the beginning
+      let canRecurse = currentTypeRecursionLevel < AutoGenConfig.recursionDepth config
+
+
+      let genPoco (shape: ShapePoco<'a>) =
+        let bestCtor =
+          shape.Constructors
+          |> Seq.filter _.IsPublic
+          |> Seq.sortBy _.Arity
+          |> Seq.tryHead
+
+        match bestCtor with
+        | None -> failwithf "Class %O lacks a public constructor" typeof<'a>
+        | Some ctor ->
+          ctor.Accept {
+          new IConstructorVisitor<'a, Gen<(unit -> 'a)>> with
+            member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
+              autoInner config newRecursionDepths
+              |> Gen.map (fun args ->
+                  let delayedCtor () =
+                    try
+                      ctor.Invoke args
+                    with
+                      | ex ->
+                        ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args addGenMsg, ex)
+                        |> raise
+                  delayedCtor
+              )
+          }
+
+
+      let wrap (t : Gen<'b>) = unbox<Gen<'a>> t
+
+      let memberSetterGenerator (shape: IShapeMember<'DeclaringType>) =
+        shape.Accept {
+          new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
+          member _.Visit(shape: ShapeMember<'DeclaringType, 'MemberType>) =
+            autoInner<'MemberType> config newRecursionDepths
+            |> Gen.map (fun mtValue -> fun dt ->
+              try
+                shape.Set dt mtValue
+              with
+                | ex ->
+                  ArgumentException(sprintf "Cannot set the %s property of %O to the generated value of %O. %s" shape.Label dt mtValue addGenMsg, ex)
+                  |> raise
             )
         }
 
-    let canRecurse (t: Type) =
-      match recursionDepths.TryFind t.AssemblyQualifiedName with
-      | Some x -> AutoGenConfig.recursionDepth config > x
-      | None -> AutoGenConfig.recursionDepth config > 0
+      let typeShape = TypeShape.Create<'a> ()
 
-    let incrementRecursionDepth (t: Type) =
-      match recursionDepths.TryFind t.AssemblyQualifiedName with
-      | Some x -> recursionDepths.Add(t.AssemblyQualifiedName, x+1)
-      | None -> recursionDepths.Add(t.AssemblyQualifiedName, 1)
+      // Check if there is a registered generator factory for a given requested generator.
+      // Fallback to the default heuristics if no factory is found.
+      match config.generators |> GeneratorCollection.tryFindFor typeof<'a> with
+      | Some (registeredType, (args, factory)) ->
 
-    let wrap (t : Gen<'b>) =
-      unbox<Gen<'a>> t
+        let factoryArgs =
+          match typeShape with
+          | GenericShape (_, typeArgs) ->
+            // If the type is generic, we need to find the actual types to use.
+            // We match generic parameters by their GenericParameterPosition property,
+            // which tells us their position in the method's generic parameter declaration.
 
-    let memberSetterGenerator (shape: IShapeMember<'DeclaringType>) =
-      shape.Accept {
-        new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
-        member _.Visit(shape: ShapeMember<'DeclaringType, 'MemberType>) =
-          autoInner<'MemberType> config recursionDepths
-          |> Gen.map (fun mtValue -> fun dt ->
-            try
-              shape.Set dt mtValue
-            with
-              | ex ->
-                ArgumentException(sprintf "Cannot set the %s property of %O to the generated value of %O. %s" shape.Label dt mtValue addGenMsg, ex)
-                |> raise
-          )
-      }
+            // The registeredType contains the method's generic parameters as they appear in the return type.
+            // For example:
+            // - Id<'a> has 'a at position 0 in the type
+            // - Or<'A, 'A> has 'A at positions 0 and 1 in the type (but GenericParameterPosition=0 for both)
+            // - Foo<'A, 'A, 'B, 'C> has 'A at 0,1 (GenericParameterPosition=0), 'B at 2 (GenericParameterPosition=1), 'C at 3 (GenericParameterPosition=2)
 
-    let typeShape = TypeShape.Create<'a> ()
+            let registeredGenArgs =
+                if registeredType.IsGenericType
+                then registeredType.GetGenericArguments()
+                else Array.empty
 
-    // Check if there is a registered generator factory for a given requested generator.
-    // Fallback to the default heuristics if no factory is found.
-    match config.generators |> GeneratorCollection.tryFindFor typeof<'a> with
-    | Some (args, factory) ->
+            // Build a mapping from method generic parameter position to concrete type
+            // by finding where each method parameter first appears in the registered type
+            let methodGenParamCount =
+                registeredGenArgs
+                |> Array.filter _.IsGenericParameter
+                |> Array.map _.GenericParameterPosition
+                |> Array.distinct
+                |> Array.length
 
-      let factoryArgs =
-        match typeShape with
-        | GenericShape (_, typeArgs) ->
-          // If the type is generic, we need to find the actual types to use
-          // which requires a bit of matching between all these generic 'a, 'b
-          // and their actual counterparts.
-          let argTypes =
-              args
-              |> Array.map (fun arg ->
-                  if arg.IsGenericParameter then
-                    typeArgs
-                    |> Array.tryFind (fun p -> p.argTypeDefinition.Name = arg.Name)
-                    |> Option.map _.argType
-                    |> Option.defaultWith (fun _ -> raise unsupportedTypeException)
-                  else arg)
-          {| genericTypes = typeArgs |> Array.map _.argType; argumentTypes = argTypes |}
+            let genericTypes = Array.zeroCreate methodGenParamCount
 
-        | _ -> {| genericTypes = Array.empty; argumentTypes = args |}
+            // For each position in registeredType, if it's a generic parameter,
+            // map it to the corresponding concrete type from typeArgs
+            for i = 0 to registeredGenArgs.Length - 1 do
+                let regArg = registeredGenArgs.[i]
+                if regArg.IsGenericParameter then
+                    let paramPosition = regArg.GenericParameterPosition
+                    // Only set it if we haven't seen this parameter position before (use first occurrence)
+                    if genericTypes[paramPosition] = null
+                    then genericTypes[paramPosition] <- box typeArgs.[i].argType
 
+            let genericTypes = genericTypes |> Array.map unbox<Type>
 
-      // and if the factory takes parameters, recurse and find generators for them
-      let targetArgs =
-        factoryArgs.argumentTypes
-        |> Array.map (fun t ->
-          // Check if this is AutoGenConfig type
-          if t = typeof<AutoGenConfig> then
-            box config
-          else
-            // Otherwise, generate a value for this type
-            let ts = TypeShape.Create(t)
-            ts.Accept { new ITypeVisitor<obj> with
-              member __.Visit<'b> () = autoInner<'b> config recursionDepths |> box
-            })
+            // Build argumentTypes: substitute generic parameters with concrete types
+            let argTypes =
+                args
+                |> Array.map (fun arg ->
+                    if arg.IsGenericParameter then
+                      // Find where this parameter first appears in the registered type
+                      let paramPosition = arg.GenericParameterPosition
+                      let firstOccurrenceIndex =
+                          registeredGenArgs
+                          |> Array.findIndex (fun t -> t.IsGenericParameter && t.GenericParameterPosition = paramPosition)
+                      typeArgs[firstOccurrenceIndex].argType
+                    else arg)
 
-      let resGen = factory factoryArgs.genericTypes targetArgs
-      resGen |> unbox<Gen<'a>>
+            {| genericTypes = genericTypes; argumentTypes = argTypes |}
 
-    | None ->
-        match typeShape with
+          | _ -> {| genericTypes = Array.empty; argumentTypes = args |}
 
-        | Shape.Unit -> wrap <| Gen.constant ()
+        // and if the factory takes parameters, recurse and find generators for them
+        let targetArgs =
+          factoryArgs.argumentTypes
+          |> Array.map (fun t ->
+            // Check if this is AutoGenConfig type
+            if t = typeof<AutoGenConfig> then
+              box config
+            // Check if this is RecursionContext type
+            elif t = typeof<RecursionContext> then
+              box (RecursionContext(canRecurseForElements))
+            else
+              // Otherwise, generate a value for this type
+              let ts = TypeShape.Create(t)
+              ts.Accept { new ITypeVisitor<obj> with
+                member __.Visit<'b> () = autoInner<'b> config newRecursionDepths |> box
+              })
 
-        | Shape.FSharpOption s ->
-            s.Element.Accept {
-              new ITypeVisitor<Gen<'a>> with
-              member __.Visit<'a> () =
-                if canRecurse typeof<'a> then
-                  autoInner<'a> config (incrementRecursionDepth typeof<'a>) |> Gen.option |> wrap
-                else
-                  Gen.constant (None: 'a option) |> wrap}
+        let resGen = factory factoryArgs.genericTypes targetArgs
+        resGen |> unbox<Gen<'a>>
 
-        | Shape.Array s ->
-            s.Element.Accept {
-              new ITypeVisitor<Gen<'a>> with
-              member __.Visit<'a> () =
-                if canRecurse typeof<'a> then
-                  gen {
-                    let! lengths =
-                      config
-                      |> AutoGenConfig.seqRange
-                      |> Gen.integral
-                      |> List.replicate s.Rank
-                      |> ListGen.sequence
-                    let elementCount = lengths |> List.fold (*) 1
-                    let! data =
-                      autoInner<'a> config (incrementRecursionDepth typeof<'a>)
-                      |> Gen.list (Range.singleton elementCount)
-                    return MultidimensionalArray.createWithGivenEntries<'a> data lengths |> unbox
-                  }
-                else
-                  0
-                  |> List.replicate s.Rank
-                  |> MultidimensionalArray.createWithDefaultEntries<'a>
-                  |> unbox
-                  |> Gen.constant }
+      | None ->
+          match typeShape with
 
-        | Shape.FSharpList s ->
-            s.Element.Accept {
-              new ITypeVisitor<Gen<'a>> with
-              member __.Visit<'a> () =
-                InternalGen.list<'a> canRecurse autoInner config incrementRecursionDepth |> wrap }
+          | Shape.Unit -> wrap <| Gen.constant ()
 
-        | Shape.FSharpSet s ->
-            s.Accept {
-              new IFSharpSetVisitor<Gen<'a>> with
-              member __.Visit<'a when 'a : comparison> () =
-                autoInner<'a list> config recursionDepths
-                |> Gen.map Set.ofList
-                |> wrap}
-
-        | Shape.FSharpMap s ->
-            s.Accept {
-              new IFSharpMapVisitor<Gen<'a>> with
-              member __.Visit<'k, 'v when 'k : comparison> () =
-                autoInner<('k * 'v) list> config recursionDepths
-                |> Gen.map Map.ofList
-                |> wrap }
-
-        | Shape.Tuple (:? ShapeTuple<'a> as shape) ->
-            shape.Elements
-            |> Seq.toList
-            |> ListGen.traverse memberSetterGenerator
-            |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
-
-        | Shape.FSharpRecord (:? ShapeFSharpRecord<'a> as shape) ->
-            shape.Fields
-            |> Seq.toList
-            |> ListGen.traverse memberSetterGenerator
-            |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
-
-        | Shape.FSharpUnion (:? ShapeFSharpUnion<'a> as shape) ->
-            let cases =
-              shape.UnionCases
-              |> Array.map (fun uc ->
-                 uc.Fields
-                 |> Seq.toList
-                 |> ListGen.traverse memberSetterGenerator)
-            gen {
-              let! caseIdx = Gen.integral <| Range.constant 0 (cases.Length - 1)
-              let! fs = cases[caseIdx]
-              return fs |> List.fold (|>) (shape.UnionCases[caseIdx].CreateUninitialized ())
-            }
-
-        | Shape.Enum _ ->
-            let values = Enum.GetValues(typeof<'a>)
-            gen {
-              let! index = Gen.integral <| Range.constant 0 (values.Length - 1)
-              return values.GetValue index |> unbox
-            }
-
-        | Shape.Nullable s ->
-            s.Accept {
-              new INullableVisitor<Gen<'a>> with
-                member __.Visit<'a when 'a : (new : unit -> 'a) and 'a :> ValueType and 'a : struct> () =
-                  if canRecurse typeof<'a> then
-                    autoInner<'a> config (incrementRecursionDepth typeof<'a>)
-                    |> Gen.option
-                    |> Gen.map Option.toNullable
-                    |> wrap
+          | Shape.Array s ->
+              s.Element.Accept {
+                new ITypeVisitor<Gen<'a>> with
+                member __.Visit<'a> () =
+                  if canRecurse then
+                    gen {
+                      let! lengths =
+                        config
+                        |> AutoGenConfig.seqRange
+                        |> Gen.integral
+                        |> List.replicate s.Rank
+                        |> ListGen.sequence
+                      let elementCount = lengths |> List.fold (*) 1
+                      let! data = autoInner<'a> config newRecursionDepths |> Gen.list (Range.singleton elementCount)
+                      return MultidimensionalArray.createWithGivenEntries<'a> data lengths |> unbox
+                    }
                   else
-                    Nullable () |> unbox |> Gen.constant
-            }
+                    0
+                    |> List.replicate s.Rank
+                    |> MultidimensionalArray.createWithDefaultEntries<'a>
+                    |> unbox
+                    |> Gen.constant }
 
-        | Shape.Collection s ->
-            s.Accept {
-              new ICollectionVisitor<Gen<'a>> with
-              member _.Visit<'collection, 'element when 'collection :> System.Collections.Generic.ICollection<'element>> () =
-                match typeShape with
-                | Shape.Poco (:? ShapePoco<'a> as shape) ->
-                  gen {
-                    let! collectionCtor = genPoco shape
-                    let! elements = InternalGen.list canRecurse autoInner config incrementRecursionDepth
-                    let collection = collectionCtor () |> unbox<System.Collections.Generic.ICollection<'element>>
-                    for e in elements do
-                      collection.Add e
-                    return collection |> unbox<'a>
-                  }
-                | _ -> raise unsupportedTypeException
+          | Shape.Tuple (:? ShapeTuple<'a> as shape) ->
+              shape.Elements
+              |> Seq.toList
+              |> ListGen.traverse memberSetterGenerator
+              |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
+
+          | Shape.FSharpRecord (:? ShapeFSharpRecord<'a> as shape) ->
+              shape.Fields
+              |> Seq.toList
+              |> ListGen.traverse memberSetterGenerator
+              |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
+
+          | Shape.FSharpUnion (:? ShapeFSharpUnion<'a> as shape) ->
+              let cases =
+                shape.UnionCases
+                |> Array.map (fun uc ->
+                   uc.Fields
+                   |> Seq.toList
+                   |> ListGen.traverse memberSetterGenerator)
+              gen {
+                let! caseIdx = Gen.integral <| Range.constant 0 (cases.Length - 1)
+                let! fs = cases[caseIdx]
+                return fs |> List.fold (|>) (shape.UnionCases[caseIdx].CreateUninitialized ())
               }
 
-        | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
-            let getDepth (sm: IShapeMember<_>) =
-              let rec loop (t: Type) depth =
-                if t = null
-                then depth
-                else loop t.BaseType (depth + 1)
-              loop sm.MemberInfo.DeclaringType 0
-            shape.Properties
-            |> Array.toList
-            |> List.groupBy (fun p -> p.MemberInfo.Name)
-            |> List.map (snd >> function
-                                | [p] -> p
-                                | ps -> ps |> List.sortByDescending getDepth |> List.head)
-            |> ListGen.traverse memberSetterGenerator
-            |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
+          | Shape.Enum _ ->
+              let values = Enum.GetValues(typeof<'a>)
+              gen {
+                let! index = Gen.integral <| Range.constant 0 (values.Length - 1)
+                return values.GetValue index |> unbox
+              }
 
-        | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape |> Gen.map (fun x -> x ())
+          | Shape.Collection s ->
+              s.Accept {
+                new ICollectionVisitor<Gen<'a>> with
+                member _.Visit<'collection, 'element when 'collection :> System.Collections.Generic.ICollection<'element>> () =
+                  match typeShape with
+                  | Shape.Poco (:? ShapePoco<'a> as shape) ->
+                    gen {
+                      let! collectionCtor = genPoco shape
+                      let! elements =
+                        if canRecurse
+                        then autoInner<'element> config newRecursionDepths |> Gen.list (AutoGenConfig.seqRange config)
+                        else Gen.constant []
+                      let collection = collectionCtor () |> unbox<System.Collections.Generic.ICollection<'element>>
+                      for e in elements do collection.Add e
+                      return collection |> unbox<'a>
+                    }
+                  | _ -> raise unsupportedTypeException
+                }
 
-        | Shape.Enumerable s ->
-            s.Element.Accept {
-              new ITypeVisitor<Gen<'a>> with
-              member __.Visit<'a> () =
-                InternalGen.list<'a> canRecurse autoInner config incrementRecursionDepth
-                |> Gen.map Seq.ofList
-                |> wrap }
+          | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
+              let getDepth (sm: IShapeMember<_>) =
+                let rec loop (t: Type) depth =
+                  if t = null
+                  then depth
+                  else loop t.BaseType (depth + 1)
+                loop sm.MemberInfo.DeclaringType 0
+              shape.Properties
+              |> Array.toList
+              |> List.groupBy _.MemberInfo.Name
+              |> List.map (snd >> function
+                                  | [p] -> p
+                                  | ps -> ps |> List.sortByDescending getDepth |> List.head)
+              |> ListGen.traverse memberSetterGenerator
+              |> Gen.map (fun fs -> fs |> List.fold (|>) (shape.CreateUninitialized ()))
 
-        | _ -> raise unsupportedTypeException
+          | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape |> Gen.map (fun x -> x ())
+
+          | _ -> raise unsupportedTypeException
 
   let auto<'a> = autoInner<'a> defaults Map.empty
 
