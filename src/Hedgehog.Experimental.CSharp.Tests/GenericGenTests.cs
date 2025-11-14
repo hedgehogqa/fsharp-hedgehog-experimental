@@ -53,8 +53,8 @@ public sealed class GenericTestGenerators
   public static Gen<Name> NameGen(Gen<string> gen) =>
     gen.Select(value => new Name("Name: " + value));
 
-  public static Gen<Maybe<T>> AlwaysJust<T>(AutoGenConfig config, RecursionContext recCtx, Gen<T> gen) =>
-    recCtx.CanRecurse
+  public static Gen<Maybe<T>> AlwaysJust<T>(AutoGenContext context, Gen<T> gen) =>
+    context.CanRecurse
       ? gen.Select(Maybe<T> (value) => new Maybe<T>.Just(value))
       : Gen.FromValue<Maybe<T>>(new Maybe<T>.Nothing());
 

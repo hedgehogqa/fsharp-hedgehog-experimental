@@ -1,6 +1,7 @@
 namespace Hedgehog
 
 open System
+open System.Collections.Immutable
 open Hedgehog
 open Hedgehog.Experimental
 open TypeShape.Core
@@ -333,31 +334,36 @@ module GenX =
     |> AutoGenConfig.addGenerators<DefaultGenerators>
     |> AutoGenConfig.addGenerator uri
 
+  type internal RecursionState = {
+    CurrentLevel: int
+    CanRecurse: bool
+    Depths: ImmutableDictionary<Type, int>
+  }
+
+  module internal RecursionState =
+    let empty = {
+      CurrentLevel = 0
+      CanRecurse = true
+      Depths = ImmutableDictionary.Empty
+    }
+
+    let reconcileFor<'a> (config: AutoGenConfig) (current: RecursionState) =
+      let currentLevel = current.Depths.GetValueOrDefault(typeof<'a>, 0)
+      let maxDepth = AutoGenConfig.recursionDepth config
+      if (currentLevel > maxDepth) then None
+      else Some
+            {
+              CurrentLevel = currentLevel
+              CanRecurse = currentLevel < maxDepth
+              Depths = current.Depths.SetItem(typeof<'a>, currentLevel + 1)
+            }
+
   module private AutoGenHelpers =
 
     let addGenMsg = "You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto."
 
     let unsupportedTypeException<'a> () =
       NotSupportedException (sprintf "Unable to auto-generate %s. %s" typeof<'a>.FullName addGenMsg)
-
-    type RecursionState = {
-      CurrentLevel: int
-      CanRecurse: bool
-      Depths: Map<string, int>
-    }
-
-    let checkRecursionDepth<'a> (config: AutoGenConfig) (recursionDepths: Map<string, int>) =
-      let typeName = typeof<'a>.AssemblyQualifiedName
-      let currentLevel = recursionDepths.TryFind typeName |> Option.defaultValue 0
-      let maxDepth = AutoGenConfig.recursionDepth config
-
-      if (currentLevel > maxDepth) then None
-      else Some
-            {
-              CurrentLevel = currentLevel
-              CanRecurse = currentLevel < maxDepth
-              Depths = recursionDepths.Add(typeName, currentLevel + 1)
-            }
 
     let resolveGenericTypeArgs (registeredType: Type) (typeArgs: GenericArgument array) (args: Type array) =
       // If the type is generic, we need to find the actual types to use.
@@ -419,20 +425,20 @@ module GenX =
         resolveGenericTypeArgs registeredType typeArgs args
       | _ -> {| genericTypes = Array.empty; argumentTypes = args |}
 
-  let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
+  let rec private autoInner<'a> (config : AutoGenConfig) (recursionState: RecursionState) : Gen<'a> =
 
     // Prevent auto-generating AutoGenConfig itself - it should only be passed as a parameter
     if typeof<'a> = typeof<AutoGenConfig> then
       raise (NotSupportedException "Cannot auto-generate AutoGenConfig type. It should be provided as a parameter to generator methods.")
 
-    match AutoGenHelpers.checkRecursionDepth<'a> config recursionDepths with
+    match recursionState |> RecursionState.reconcileFor<'a> config with
     | None ->
       Gen.delay (fun () ->
         raise (InvalidOperationException(
           sprintf "Recursion depth limit %d exceeded for type %s. " (AutoGenConfig.recursionDepth config) typeof<'a>.FullName +
           "To fix this, add a RecursionContext parameter to your generator method and use recursionContext.CanRecurse to control recursion.")))
 
-    | Some recursionState ->
+    | Some newRecursionState ->
 
       let genPoco (shape: ShapePoco<'a>) =
         let bestCtor =
@@ -447,7 +453,7 @@ module GenX =
           ctor.Accept {
           new IConstructorVisitor<'a, Gen<(unit -> 'a)>> with
             member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-              autoInner config recursionState.Depths
+              autoInner config newRecursionState
               |> Gen.map (fun args ->
                   let delayedCtor () =
                     try
@@ -466,7 +472,7 @@ module GenX =
         shape.Accept {
           new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
           member _.Visit(shape: ShapeMember<'DeclaringType, 'MemberType>) =
-            autoInner<'MemberType> config recursionState.Depths
+            autoInner<'MemberType> config newRecursionState
             |> Gen.map (fun mtValue -> fun dt ->
               try
                 shape.Set dt mtValue
@@ -489,17 +495,20 @@ module GenX =
         let targetArgs =
           factoryArgs.argumentTypes
           |> Array.map (fun t ->
-            // Check if this is AutoGenConfig type
-            if t = typeof<AutoGenConfig> then
-              box config
-            // Check if this is RecursionContext type
-            elif t = typeof<RecursionContext> then
-              box (RecursionContext(recursionState.CanRecurse))
+            if t = typeof<AutoGenContext> then
+              let ctx = AutoGenContext(
+                canRecurse = newRecursionState.CanRecurse,
+                currentRecursionDepth = newRecursionState.CurrentLevel,
+                collectionRange = AutoGenConfig.seqRange config,
+                auto = {
+                  new IAutoGenerator with
+                    member __.Generate<'x>() = autoInner<'x> config newRecursionState })
+              box ctx
             else
               // Otherwise, generate a value for this type
               let ts = TypeShape.Create(t)
               ts.Accept { new ITypeVisitor<obj> with
-                member __.Visit<'b> () = autoInner<'b> config recursionState.Depths |> box
+                member __.Visit<'b> () = autoInner<'b> config newRecursionState |> box
               })
 
         let resGen = factory factoryArgs.genericTypes targetArgs
@@ -514,7 +523,7 @@ module GenX =
               s.Element.Accept {
                 new ITypeVisitor<Gen<'a>> with
                 member __.Visit<'a> () =
-                  if recursionState.CanRecurse then
+                  if newRecursionState.CanRecurse then
                     gen {
                       let! lengths =
                         config
@@ -523,7 +532,7 @@ module GenX =
                         |> List.replicate s.Rank
                         |> ListGen.sequence
                       let elementCount = lengths |> List.fold (*) 1
-                      let! data = autoInner<'a> config recursionState.Depths |> Gen.list (Range.singleton elementCount)
+                      let! data = autoInner<'a> config newRecursionState |> Gen.list (Range.singleton elementCount)
                       return MultidimensionalArray.createWithGivenEntries<'a> data lengths |> unbox
                     }
                   else
@@ -574,8 +583,8 @@ module GenX =
                     gen {
                       let! collectionCtor = genPoco shape
                       let! elements =
-                        if recursionState.CanRecurse
-                        then autoInner<'element> config recursionState.Depths |> Gen.list (AutoGenConfig.seqRange config)
+                        if newRecursionState.CanRecurse
+                        then autoInner<'element> config newRecursionState |> Gen.list (AutoGenConfig.seqRange config)
                         else Gen.constant []
                       let collection = collectionCtor () |> unbox<System.Collections.Generic.ICollection<'element>>
                       for e in elements do collection.Add e
@@ -604,6 +613,6 @@ module GenX =
 
           | _ -> raise (AutoGenHelpers.unsupportedTypeException<'a>())
 
-  let auto<'a> = autoInner<'a> defaults Map.empty
+  let auto<'a> = autoInner<'a> defaults RecursionState.empty
 
-  let autoWith<'a> config = autoInner<'a> config Map.empty
+  let autoWith<'a> config = autoInner<'a> config RecursionState.empty

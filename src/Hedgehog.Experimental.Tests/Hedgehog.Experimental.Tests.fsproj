@@ -13,6 +13,7 @@
     <Compile Include="GenTests.fs" />
     <Compile Include="GenericGenTests.fs" />
     <Compile Include="AutoGenConfigTests.fs" />
+    <Compile Include="AutoGenContextTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

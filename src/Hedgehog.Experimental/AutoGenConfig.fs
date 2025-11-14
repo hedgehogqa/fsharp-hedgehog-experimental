@@ -3,12 +3,19 @@ namespace Hedgehog
 open System
 open System.Reflection
 
-/// Provides recursion depth information for the currently generated type.
-/// Can be used by custom generators to respect recursion limits.
+type internal IAutoGenerator =
+    abstract member Generate<'a> : unit -> Gen<'a>
+
 [<Sealed>]
-type RecursionContext(canRecurse: bool) =
-  /// Indicates whether recursion is allowed for the current type being generated.
-  member _.CanRecurse = canRecurse
+type AutoGenContext internal (
+    canRecurse: bool,
+    currentRecursionDepth: int,
+    collectionRange: Range<int>,
+    auto: IAutoGenerator) =
+    member _.CanRecurse = canRecurse
+    member _.CurrentRecursionDepth = currentRecursionDepth
+    member _.CollectionRange = collectionRange
+    member _.AutoGenerate<'a>() : Gen<'a> = auto.Generate<'a>()
 
 type AutoGenConfig = internal {
   seqRange: Range<int> option
@@ -60,13 +67,8 @@ module AutoGenConfig =
             then Some (t.GetGenericArguments().[0])
             else None
 
-      let getAutoGenConfigType (t: Type) =
-          if t = typeof<AutoGenConfig>
-            then Some t
-            else None
-
-      let getRecursionContextType (t: Type) =
-          if t = typeof<RecursionContext>
+      let getAutogenContextType (t: Type) =
+          if t = typeof<AutoGenContext>
             then Some t
             else None
 
@@ -77,8 +79,7 @@ module AutoGenConfig =
               | None -> None
               | Some types ->
                   getGenType param.ParameterType
-                    |> Option.orElseWith (fun () -> getAutoGenConfigType param.ParameterType)
-                    |> Option.orElseWith (fun () -> getRecursionContextType param.ParameterType)
+                    |> Option.orElseWith (fun () -> getAutogenContextType param.ParameterType)
                     |> Option.map (fun t -> Array.append types [| t |])
           ) (Some [||])
 

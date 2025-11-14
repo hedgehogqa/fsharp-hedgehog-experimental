@@ -209,17 +209,17 @@ let! myVal =
 
 ```f#
 // a type containing generators for generic types
-// methods should return Gen<_> and are allowed to take Gen<_> and AutoGenConfig as parameters
+// methods should return Gen<_> and are allowed to take Gen<_> and AutoGenContext as parameters
 type GenericGenerators =
   
   // Generate generic types
   static member MyGenericType<'a>(valueGen : Gen<'a>) : Gen<MyGenericType<'a>> =
      valueGen | Gen.map (fun x -> MyGenericType(x))
      
-  // Generate generic types with recursion support and access to AutoGenConfig
-  static member ImmutableList<'a>(config: AutoGenConfig, recursionContext: RecursionContext, valueGen: Gen<'a>) : Gen<ImmutableList<'a>> =
-    if recursionContext.CanRecurse then
-      valueGen |> Gen.list (AutoGenConfig.seqRange config) |> Gen.map ImmutableList.CreateRange
+  // Generate generic types with recursion support and access to AutoGenContext
+  static member ImmutableList<'a>(context: AutoGenContext, valueGen: Gen<'a>) : Gen<ImmutableList<'a>> =
+    if context.CanRecurse then
+      valueGen |> Gen.list context.CollectionRange |> Gen.map ImmutableList.CreateRange
     else
       Gen.constant ImmutableList<'a>.Empty
      
