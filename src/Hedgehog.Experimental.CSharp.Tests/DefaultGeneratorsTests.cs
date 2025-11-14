@@ -8,7 +8,7 @@ namespace Hedgehog.Linq.Tests;
 
 public sealed class DefaultGeneratorsTests
 {
-    private AutoGenConfig _config = GenX.defaults.WithCollectionRange(Range.FromValue(5));
+    private readonly AutoGenConfig _config = GenX.defaults.WithCollectionRange(Range.FromValue(5));
 
     [Fact]
     public void ShouldGenerateImmutableSet() =>
@@ -43,12 +43,24 @@ public sealed class DefaultGeneratorsTests
         ForAll(GenX.autoWith<IDictionary<int, string>>(_config)).Select(x => x.Count > 0).Check();
 
     [Fact]
+    public void ShouldGenerateIReadOnlyDictionary() =>
+        ForAll(GenX.autoWith<IReadOnlyDictionary<int, string>>(_config)).Select(x => x.Count > 0).Check();
+
+    [Fact]
     public void ShouldGenerateList() =>
         ForAll(GenX.autoWith<List<int>>(_config)).Select(x => x.Count == 5).Check();
 
-    // [Fact]
-    // public void ShouldGenerateIList() =>
-    //     ForAll(GenX.autoWith<IList<int>>(_config)).Select(x => x.Count == 5).Check();
+    [Fact]
+    public void ShouldGenerateIList() =>
+        ForAll(GenX.autoWith<IList<int>>(_config)).Select(x => x.Count == 5).Check();
+
+    [Fact]
+    public void ShouldGenerateIReadOnlyList() =>
+        ForAll(GenX.autoWith<IReadOnlyList<int>>(_config)).Select(x => x.Count == 5).Check();
+
+    [Fact]
+    public void ShouldGenerateIEnumerable() =>
+        ForAll(GenX.autoWith<IEnumerable<int>>(_config)).Select(x => x.Count() == 5).Check();
 
     [Fact]
     public void StressTest() =>

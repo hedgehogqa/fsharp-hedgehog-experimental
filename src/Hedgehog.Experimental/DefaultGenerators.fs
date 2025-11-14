@@ -1,6 +1,7 @@
 namespace Hedgehog.Experimental
 
 open System.Collections.Generic
+open System.Collections.ObjectModel
 open System.Linq
 open Hedgehog
 open System
@@ -78,13 +79,13 @@ type DefaultGenerators =
             Gen.constant (Dictionary<'k, 'v>())
 
     static member IDictionary<'k, 'v when 'k: equality>(config: AutoGenConfig, recursionContext: RecursionContext, keyGen: Gen<'k>, valueGen: Gen<'v>): Gen<IDictionary<'k, 'v>> =
-        if recursionContext.CanRecurse then
-            gen {
-                let! kvps = Gen.zip keyGen valueGen |> Gen.list (AutoGenConfig.seqRange config)
-                return Dictionary(dict kvps)
-            }
-        else
-            Gen.constant (Dictionary<'k, 'v>() :> IDictionary<'k, 'v>)
+        DefaultGenerators.Dictionary(config, recursionContext, keyGen, valueGen) |> Gen.map (fun x -> x :> IDictionary<'k, 'v>)
+
+    static member ReadOnlyDictionary<'k, 'v when 'k: equality>(config: AutoGenConfig, recursionContext: RecursionContext, keyGen: Gen<'k>, valueGen: Gen<'v>): Gen<ReadOnlyDictionary<'k, 'v>> =
+        DefaultGenerators.Dictionary(config, recursionContext, keyGen, valueGen) |> Gen.map (fun x -> ReadOnlyDictionary(x))
+
+    static member IReadOnlyDictionary<'k, 'v when 'k: equality>(config: AutoGenConfig, recursionContext: RecursionContext, keyGen: Gen<'k>, valueGen: Gen<'v>): Gen<IReadOnlyDictionary<'k, 'v>> =
+        DefaultGenerators.Dictionary(config, recursionContext, keyGen, valueGen) |> Gen.map (fun x -> ReadOnlyDictionary(x))
 
     static member FSharpList<'a>(config: AutoGenConfig, recursionContext: RecursionContext, valueGen: Gen<'a>) : Gen<'a list> =
         if recursionContext.CanRecurse then
@@ -97,6 +98,9 @@ type DefaultGenerators =
 
     static member IList<'a>(config: AutoGenConfig, recursionContext: RecursionContext, valueGen: Gen<'a>) : Gen<IList<'a>> =
         DefaultGenerators.FSharpList(config, recursionContext, valueGen) |> Gen.map _.ToList()
+
+    static member IReadOnlyList<'a>(config: AutoGenConfig, recursionContext: RecursionContext, valueGen: Gen<'a>) : Gen<IReadOnlyList<'a>> =
+        DefaultGenerators.FSharpList(config, recursionContext, valueGen) |> Gen.map _.ToList().AsReadOnly()
 
     static member Seq<'a>(config: AutoGenConfig, recursionContext: RecursionContext, valueGen: Gen<'a>) : Gen<seq<'a>> =
         DefaultGenerators.FSharpList(config, recursionContext, valueGen) |> Gen.map Seq.ofList
