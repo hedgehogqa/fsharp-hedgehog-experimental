@@ -1,6 +1,7 @@
 module Hedgehog.Experimental.Tests.GenTests
 
 open System
+open Hedgehog.Experimental
 open Xunit
 open Swensen.Unquote
 open Hedgehog
@@ -928,7 +929,7 @@ let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
   let lengths = [ 2; 2 ]
 
   let array : int [,] =
-    GenX.MultidimensionalArray.createWithGivenEntries data lengths
+    MultidimensionalArray.createWithGivenEntries data lengths
     |> unbox
 
   <@

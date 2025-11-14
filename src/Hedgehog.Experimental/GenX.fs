@@ -333,56 +333,106 @@ module GenX =
     |> AutoGenConfig.addGenerators<DefaultGenerators>
     |> AutoGenConfig.addGenerator uri
 
-  module internal MultidimensionalArray =
-
-    let createWithDefaultEntries<'a> (lengths: int list) =
-      let array = lengths |> Array.ofList
-      Array.CreateInstance (typeof<'a>, array)
-
-    let createWithGivenEntries<'a> (data: 'a seq) lengths =
-      let array = createWithDefaultEntries<'a> lengths
-      let currentIndices = Array.create (List.length lengths) 0
-      use en = data.GetEnumerator ()
-      let rec loop currentDimensionIndex = function
-        | [] ->
-            en.MoveNext () |> ignore
-            array.SetValue(en.Current, currentIndices)
-        | currentLength :: remainingLengths ->
-            for i in 0..currentLength - 1 do
-              currentIndices[currentDimensionIndex] <- i
-              loop (currentDimensionIndex + 1) remainingLengths
-      loop 0 lengths
-      array
-
-  let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
+  module private AutoGenHelpers =
 
     let addGenMsg = "You can use 'GenX.defaults |> AutoGenConfig.addGenerator myGen |> GenX.autoWith' to generate types not inherently supported by GenX.auto."
-    let unsupportedTypeException = NotSupportedException (sprintf "Unable to auto-generate %s. %s" typeof<'a>.FullName addGenMsg)
+
+    let unsupportedTypeException<'a> () =
+      NotSupportedException (sprintf "Unable to auto-generate %s. %s" typeof<'a>.FullName addGenMsg)
+
+    type RecursionState = {
+      CurrentLevel: int
+      CanRecurse: bool
+      Depths: Map<string, int>
+    }
+
+    let checkRecursionDepth<'a> (config: AutoGenConfig) (recursionDepths: Map<string, int>) =
+      let typeName = typeof<'a>.AssemblyQualifiedName
+      let currentLevel = recursionDepths.TryFind typeName |> Option.defaultValue 0
+      let maxDepth = AutoGenConfig.recursionDepth config
+
+      if (currentLevel > maxDepth) then None
+      else Some
+            {
+              CurrentLevel = currentLevel
+              CanRecurse = currentLevel < maxDepth
+              Depths = recursionDepths.Add(typeName, currentLevel + 1)
+            }
+
+    let resolveGenericTypeArgs (registeredType: Type) (typeArgs: GenericArgument array) (args: Type array) =
+      // If the type is generic, we need to find the actual types to use.
+      // We match generic parameters by their GenericParameterPosition property,
+      // which tells us their position in the method's generic parameter declaration.
+
+      // The registeredType contains the method's generic parameters as they appear in the return type.
+      // For example:
+      // - Id<'a> has 'a at position 0 in the type
+      // - Or<'A, 'A> has 'A at positions 0 and 1 in the type (but GenericParameterPosition=0 for both)
+      // - Foo<'A, 'A, 'B, 'C> has 'A at 0,1 (GenericParameterPosition=0), 'B at 2 (GenericParameterPosition=1), 'C at 3 (GenericParameterPosition=2)
+
+      let registeredGenArgs =
+        if registeredType.IsGenericType
+        then registeredType.GetGenericArguments()
+        else Array.empty
+
+      // Build a mapping from method generic parameter position to concrete type
+      // by finding where each method parameter first appears in the registered type
+      let methodGenParamCount =
+        registeredGenArgs
+        |> Array.filter _.IsGenericParameter
+        |> Array.map _.GenericParameterPosition
+        |> Array.distinct
+        |> Array.length
+
+      let genericTypes = Array.zeroCreate methodGenParamCount
+
+      // For each position in registeredType, if it's a generic parameter,
+      // map it to the corresponding concrete type from typeArgs
+      for i = 0 to registeredGenArgs.Length - 1 do
+        let regArg = registeredGenArgs[i]
+        if regArg.IsGenericParameter then
+          let paramPosition = regArg.GenericParameterPosition
+          // Only set it if we haven't seen this parameter position before (use first occurrence)
+          if genericTypes[paramPosition] = null
+          then genericTypes[paramPosition] <- box typeArgs[i].argType
+
+      let genericTypes = genericTypes |> Array.map unbox<Type>
+
+      // Build argumentTypes: substitute generic parameters with concrete types
+      let argTypes =
+        args
+        |> Array.map (fun arg ->
+          if arg.IsGenericParameter then
+            // Find where this parameter first appears in the registered type
+            let paramPosition = arg.GenericParameterPosition
+            let firstOccurrenceIndex =
+              registeredGenArgs
+              |> Array.findIndex (fun t -> t.IsGenericParameter && t.GenericParameterPosition = paramPosition)
+            typeArgs[firstOccurrenceIndex].argType
+          else arg)
+
+      {| genericTypes = genericTypes; argumentTypes = argTypes |}
+
+    let prepareFactoryArgTypes (typeShape: TypeShape<'a>) (registeredType: Type) (args: Type array) =
+      match typeShape with
+      | GenericShape (_, typeArgs) ->
+        resolveGenericTypeArgs registeredType typeArgs args
+      | _ -> {| genericTypes = Array.empty; argumentTypes = args |}
+
+  let rec private autoInner<'a> (config : AutoGenConfig) (recursionDepths: Map<string, int>) : Gen<'a> =
 
     // Prevent auto-generating AutoGenConfig itself - it should only be passed as a parameter
     if typeof<'a> = typeof<AutoGenConfig> then
       raise (NotSupportedException "Cannot auto-generate AutoGenConfig type. It should be provided as a parameter to generator methods.")
 
-    let currentTypeRecursionLevel =
-      recursionDepths.TryFind typeof<'a>.AssemblyQualifiedName |> Option.defaultValue 0
-
-    // Check if we can recurse for the current type
-    // This tells the container generator whether it should generate elements or return empty
-    let canRecurseForElements = currentTypeRecursionLevel < AutoGenConfig.recursionDepth config
-
-    if currentTypeRecursionLevel > AutoGenConfig.recursionDepth config then
+    match AutoGenHelpers.checkRecursionDepth<'a> config recursionDepths with
+    | None ->
       Gen.delay (fun () ->
         raise (InvalidOperationException(
           sprintf "Recursion depth limit %d exceeded for type %s. " (AutoGenConfig.recursionDepth config) typeof<'a>.FullName +
           "To fix this, add a RecursionContext parameter to your generator method and use recursionContext.CanRecurse to control recursion.")))
-    else
 
-      // Increment recursion depth for this type before generating element types
-      let newRecursionDepths = recursionDepths.Add(typeof<'a>.AssemblyQualifiedName, currentTypeRecursionLevel + 1)
-
-      // Check recursion depth at the beginning
-      let canRecurse = currentTypeRecursionLevel < AutoGenConfig.recursionDepth config
-
+    | Some recursionState ->
 
       let genPoco (shape: ShapePoco<'a>) =
         let bestCtor =
@@ -397,19 +447,18 @@ module GenX =
           ctor.Accept {
           new IConstructorVisitor<'a, Gen<(unit -> 'a)>> with
             member __.Visit<'CtorParams> (ctor : ShapeConstructor<'a, 'CtorParams>) =
-              autoInner config newRecursionDepths
+              autoInner config recursionState.Depths
               |> Gen.map (fun args ->
                   let delayedCtor () =
                     try
                       ctor.Invoke args
                     with
                       | ex ->
-                        ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args addGenMsg, ex)
+                        ArgumentException(sprintf "Cannot construct %O with the generated argument(s): %O. %s" typeof<'a> args AutoGenHelpers.addGenMsg, ex)
                         |> raise
                   delayedCtor
               )
           }
-
 
       let wrap (t : Gen<'b>) = unbox<Gen<'a>> t
 
@@ -417,13 +466,13 @@ module GenX =
         shape.Accept {
           new IMemberVisitor<'DeclaringType, Gen<'DeclaringType -> 'DeclaringType>> with
           member _.Visit(shape: ShapeMember<'DeclaringType, 'MemberType>) =
-            autoInner<'MemberType> config newRecursionDepths
+            autoInner<'MemberType> config recursionState.Depths
             |> Gen.map (fun mtValue -> fun dt ->
               try
                 shape.Set dt mtValue
               with
                 | ex ->
-                  ArgumentException(sprintf "Cannot set the %s property of %O to the generated value of %O. %s" shape.Label dt mtValue addGenMsg, ex)
+                  ArgumentException(sprintf "Cannot set the %s property of %O to the generated value of %O. %s" shape.Label dt mtValue AutoGenHelpers.addGenMsg, ex)
                   |> raise
             )
         }
@@ -434,64 +483,7 @@ module GenX =
       // Fallback to the default heuristics if no factory is found.
       match config.generators |> GeneratorCollection.tryFindFor typeof<'a> with
       | Some (registeredType, (args, factory)) ->
-
-        let factoryArgs =
-          match typeShape with
-          | GenericShape (_, typeArgs) ->
-            // If the type is generic, we need to find the actual types to use.
-            // We match generic parameters by their GenericParameterPosition property,
-            // which tells us their position in the method's generic parameter declaration.
-
-            // The registeredType contains the method's generic parameters as they appear in the return type.
-            // For example:
-            // - Id<'a> has 'a at position 0 in the type
-            // - Or<'A, 'A> has 'A at positions 0 and 1 in the type (but GenericParameterPosition=0 for both)
-            // - Foo<'A, 'A, 'B, 'C> has 'A at 0,1 (GenericParameterPosition=0), 'B at 2 (GenericParameterPosition=1), 'C at 3 (GenericParameterPosition=2)
-
-            let registeredGenArgs =
-                if registeredType.IsGenericType
-                then registeredType.GetGenericArguments()
-                else Array.empty
-
-            // Build a mapping from method generic parameter position to concrete type
-            // by finding where each method parameter first appears in the registered type
-            let methodGenParamCount =
-                registeredGenArgs
-                |> Array.filter _.IsGenericParameter
-                |> Array.map _.GenericParameterPosition
-                |> Array.distinct
-                |> Array.length
-
-            let genericTypes = Array.zeroCreate methodGenParamCount
-
-            // For each position in registeredType, if it's a generic parameter,
-            // map it to the corresponding concrete type from typeArgs
-            for i = 0 to registeredGenArgs.Length - 1 do
-                let regArg = registeredGenArgs.[i]
-                if regArg.IsGenericParameter then
-                    let paramPosition = regArg.GenericParameterPosition
-                    // Only set it if we haven't seen this parameter position before (use first occurrence)
-                    if genericTypes[paramPosition] = null
-                    then genericTypes[paramPosition] <- box typeArgs.[i].argType
-
-            let genericTypes = genericTypes |> Array.map unbox<Type>
-
-            // Build argumentTypes: substitute generic parameters with concrete types
-            let argTypes =
-                args
-                |> Array.map (fun arg ->
-                    if arg.IsGenericParameter then
-                      // Find where this parameter first appears in the registered type
-                      let paramPosition = arg.GenericParameterPosition
-                      let firstOccurrenceIndex =
-                          registeredGenArgs
-                          |> Array.findIndex (fun t -> t.IsGenericParameter && t.GenericParameterPosition = paramPosition)
-                      typeArgs[firstOccurrenceIndex].argType
-                    else arg)
-
-            {| genericTypes = genericTypes; argumentTypes = argTypes |}
-
-          | _ -> {| genericTypes = Array.empty; argumentTypes = args |}
+        let factoryArgs = AutoGenHelpers.prepareFactoryArgTypes typeShape registeredType args
 
         // and if the factory takes parameters, recurse and find generators for them
         let targetArgs =
@@ -502,12 +494,12 @@ module GenX =
               box config
             // Check if this is RecursionContext type
             elif t = typeof<RecursionContext> then
-              box (RecursionContext(canRecurseForElements))
+              box (RecursionContext(recursionState.CanRecurse))
             else
               // Otherwise, generate a value for this type
               let ts = TypeShape.Create(t)
               ts.Accept { new ITypeVisitor<obj> with
-                member __.Visit<'b> () = autoInner<'b> config newRecursionDepths |> box
+                member __.Visit<'b> () = autoInner<'b> config recursionState.Depths |> box
               })
 
         let resGen = factory factoryArgs.genericTypes targetArgs
@@ -522,7 +514,7 @@ module GenX =
               s.Element.Accept {
                 new ITypeVisitor<Gen<'a>> with
                 member __.Visit<'a> () =
-                  if canRecurse then
+                  if recursionState.CanRecurse then
                     gen {
                       let! lengths =
                         config
@@ -531,7 +523,7 @@ module GenX =
                         |> List.replicate s.Rank
                         |> ListGen.sequence
                       let elementCount = lengths |> List.fold (*) 1
-                      let! data = autoInner<'a> config newRecursionDepths |> Gen.list (Range.singleton elementCount)
+                      let! data = autoInner<'a> config recursionState.Depths |> Gen.list (Range.singleton elementCount)
                       return MultidimensionalArray.createWithGivenEntries<'a> data lengths |> unbox
                     }
                   else
@@ -582,14 +574,14 @@ module GenX =
                     gen {
                       let! collectionCtor = genPoco shape
                       let! elements =
-                        if canRecurse
-                        then autoInner<'element> config newRecursionDepths |> Gen.list (AutoGenConfig.seqRange config)
+                        if recursionState.CanRecurse
+                        then autoInner<'element> config recursionState.Depths |> Gen.list (AutoGenConfig.seqRange config)
                         else Gen.constant []
                       let collection = collectionCtor () |> unbox<System.Collections.Generic.ICollection<'element>>
                       for e in elements do collection.Add e
                       return collection |> unbox<'a>
                     }
-                  | _ -> raise unsupportedTypeException
+                  | _ -> raise (AutoGenHelpers.unsupportedTypeException<'a>())
                 }
 
           | Shape.CliMutable (:? ShapeCliMutable<'a> as shape) ->
@@ -610,7 +602,7 @@ module GenX =
 
           | Shape.Poco (:? ShapePoco<'a> as shape) -> genPoco shape |> Gen.map (fun x -> x ())
 
-          | _ -> raise unsupportedTypeException
+          | _ -> raise (AutoGenHelpers.unsupportedTypeException<'a>())
 
   let auto<'a> = autoInner<'a> defaults Map.empty
 
