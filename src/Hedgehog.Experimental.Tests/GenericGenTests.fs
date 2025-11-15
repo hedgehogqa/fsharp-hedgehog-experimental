@@ -21,10 +21,7 @@ type GenericTestGenerators =
 
   // Test that we can override the "default" generator for a type
   static member Guid() =
-    Gen.byte (Range.constantBounded())
-    |> Gen.array (Range.singleton 12)
-    |> Gen.map (Array.append (Array.zeroCreate 4))
-    |> Gen.map Guid
+    Gen.constant Guid.Empty
 
   // A generator for Id<'a> to test phantom generic type
   static member Id<'a>(gen : Gen<Guid>) : Gen<Id<'a>> = gen |> Gen.map Id
@@ -43,6 +40,12 @@ type GenericTestGenerators =
   static member AlwaysLeft<'a, 'b>(genB: Gen<'b>, genA: Gen<'a>) : Gen<Either<'a, 'b>> =
         genA |> Gen.map Left
 
+  static member MaybeStringSpecific(): Gen<Maybe<string>> =
+        Gen.constant (Just "Specific String")
+
+  static member EitherIntStringSpecific<'a>(): Gen<Either<'a, string>> =
+        Gen.constant (Right "Specific String")
+
 let checkWith tests = PropertyConfig.defaultConfig |> PropertyConfig.withTests tests |> Property.checkWith
 
 let isCustomGuid (guid: Guid) = guid.ToByteArray()[..3] |> Array.forall ((=) 0uy)
@@ -59,7 +62,7 @@ let ``should generate value with phantom generic type - Id<'a>``() =
 let ``should generate generic value for union type - Either<'a, 'b>``() =
    let config = GenX.defaults |> AutoGenConfig.addGenerators<GenericTestGenerators>
    checkWith 100<tests> <| property {
-        let! x = GenX.autoWith<Either<int, string>> config
+        let! x = GenX.autoWith<Either<int, bool>> config
         test <@ x |> function Left _ -> true | _ -> false @>
     }
 
@@ -101,4 +104,15 @@ let ``should generate outer class with generic type inside``() =
    checkWith 100<tests> <| property {
         let! x = GenX.autoWith<OuterClass> config
         test <@ x |> function cls -> match cls.Value with Just v -> isCustomGuid v | _ -> false @>
+    }
+
+[<Fact>]
+let ``should use most specific generators``() =
+   let config = GenX.defaults |> AutoGenConfig.addGenerators<GenericTestGenerators>
+   checkWith 100<tests> <| property {
+        let! x = GenX.autoWith<Maybe<string>> config
+        test <@ x = Just "Specific String" @>
+
+        let! y = GenX.autoWith<Either<int, string>> config
+        test <@ y = Right "Specific String" @>
     }

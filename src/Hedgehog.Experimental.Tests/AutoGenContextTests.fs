@@ -4,13 +4,12 @@ open Hedgehog
 open Xunit
 open Swensen.Unquote
 
-type Maybe<'a> = Just of 'a | Nothing
 type RecursiveType<'a> =
-    { Value: Maybe<RecursiveType<'a>>}
+    { Value: Option<RecursiveType<'a>>}
     member this.Depth =
         match this.Value with
-        | Nothing -> 0
-        | Just x -> x.Depth + 1
+        | None -> 0
+        | Some x -> x.Depth + 1
 
 type RecursiveGenerators =
     // override Option to always generate Some when recursion is allowed
@@ -18,9 +17,9 @@ type RecursiveGenerators =
     static member Option<'a>(context: AutoGenContext) =
         if context.CanRecurse then
             printfn "CurrentRecursionDepth: %d" context.CurrentRecursionDepth
-            context.AutoGenerate<'a>() |> Gen.map Just
+            context.AutoGenerate<'a>() |> Gen.map Some
         else
-            Gen.constant Nothing
+            Gen.constant None
 
 [<Fact>]
 let ``Should preserve recursion with generic types when using AutoGenContext.AutoGenerate``() =
@@ -33,4 +32,4 @@ let ``Should preserve recursion with generic types when using AutoGenContext.Aut
 
         let! result = GenX.autoWith<RecursiveType<int>> config
         test <@ result.Depth = recDepth @>
-    } |> Property.recheck "0_8749783378671135247_1719019878934027555_"
+    } |> Property.check

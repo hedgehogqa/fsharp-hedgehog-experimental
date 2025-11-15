@@ -56,7 +56,8 @@ module AutoGenConfig =
 
   /// Add a generator to the configuration.
   let addGenerator (gen: Gen<'a>) =
-    mapGenerators (GeneratorCollection.map _.SetItem(typeof<'a>, ([||], fun _ _ -> gen)))
+    let targetType = typeof<'a>
+    mapGenerators (GeneratorCollection.addGenerator targetType targetType [||] (fun _ _ -> gen))
 
   /// Add generators from a given type.
   /// The type is expected to have static methods that return Gen<_>.
@@ -95,5 +96,5 @@ module AutoGenConfig =
               Some (targetType, typeArray, factory)
           | _ -> None)
       |> Seq.fold (fun cfg (targetType, typeArray, factory) ->
-          cfg |> mapGenerators (GeneratorCollection.addGenerator targetType typeArray factory))
+          cfg |> mapGenerators (GeneratorCollection.addGenerator targetType targetType typeArray factory))
           config
