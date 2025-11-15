@@ -5,7 +5,7 @@
     <OutputType>Exe</OutputType>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <Compile Include="ComplexGenericTest.fs" />
     <Compile Include="TypeParamMappingTests.fs" />
