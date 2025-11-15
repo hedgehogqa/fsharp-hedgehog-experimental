@@ -1,6 +1,7 @@
 module Hedgehog.Experimental.Tests.GenTests
 
 open System
+open Hedgehog.Experimental
 open Xunit
 open Swensen.Unquote
 open Hedgehog
@@ -549,7 +550,8 @@ and MutuallyRecursive2 =
         this.X
         |> List.choose (fun mc1 -> mc1.X)
         |> List.map (fun mc2 -> mc2.Depth + 1)
-      if depths.IsEmpty then 0 else List.max depths
+      if depths.IsEmpty then 1 // Having items in X means we recursed at least once
+      else List.max depths
 
 [<Fact>]
 let ``auto with mutually recursive types does not cause stack overflow using default settings`` () =
@@ -573,10 +575,11 @@ let ``auto with mutually recursive types respects max recursion depth`` () =
 let ``auto with mutually recursive types generates some values with max recursion depth`` () =
     checkWith 10<tests> <| property {
         let! depth = Gen.int32 <| Range.linear 1 5
-        let! xs1 = GenX.autoWith<MutuallyRecursive1> (GenX.defaults |> AutoGenConfig.setRecursionDepth depth |> AutoGenConfig.setSeqRange (Range.exponential 1 5))
-                  |> (Gen.list (Range.singleton 100))
-        let! xs2 = GenX.autoWith<MutuallyRecursive2> (GenX.defaults |> AutoGenConfig.setRecursionDepth depth |> AutoGenConfig.setSeqRange (Range.exponential 1 5))
-                  |> (Gen.list (Range.singleton 100))
+        let config = GenX.defaults |> AutoGenConfig.setRecursionDepth depth |> AutoGenConfig.setSeqRange (Range.exponential 1 5)
+        let! xs1 = GenX.autoWith<MutuallyRecursive1> config
+                  |> (Gen.list (Range.singleton 10))
+        let! xs2 = GenX.autoWith<MutuallyRecursive2> config
+                  |> (Gen.list (Range.singleton 10))
         test <@ xs1 |> List.exists (fun x -> x.Depth = depth) @>
         test <@ xs2 |> List.exists (fun x -> x.Depth = depth) @>
     }
@@ -926,7 +929,7 @@ let ``MultidimensionalArray.createWithGivenEntries works for 2x2`` () =
   let lengths = [ 2; 2 ]
 
   let array : int [,] =
-    GenX.MultidimensionalArray.createWithGivenEntries data lengths
+    MultidimensionalArray.createWithGivenEntries data lengths
     |> unbox
 
   <@

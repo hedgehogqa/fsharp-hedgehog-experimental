@@ -5,12 +5,15 @@
     <OutputType>Exe</OutputType>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-
+  
   <ItemGroup>
+    <Compile Include="ComplexGenericTest.fs" />
+    <Compile Include="TypeParamMappingTests.fs" />
     <Compile Include="TypeUtilsTests.fs" />
     <Compile Include="GenTests.fs" />
     <Compile Include="GenericGenTests.fs" />
     <Compile Include="AutoGenConfigTests.fs" />
+    <Compile Include="AutoGenContextTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

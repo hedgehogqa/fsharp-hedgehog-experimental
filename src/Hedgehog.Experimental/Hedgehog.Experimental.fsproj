@@ -26,6 +26,8 @@
     <Compile Include="TypeShape.fs" />
     <Compile Include="GeneratorCollection.fs" />
     <Compile Include="AutoGenConfig.fs" />
+    <Compile Include="DefaultGenerators.fs" />
+    <Compile Include="MultidimensionalArray.fs" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>Hedgehog.Experimental.Tests</_Parameter1>
     </AssemblyAttribute>

@@ -4,7 +4,7 @@ module internal Hedgehog.TypeUtils
 open System
 
 let satisfies (value: Type) (gen: Type) : bool =
-    if gen.IsGenericTypeDefinition || gen.IsGenericType && value.IsGenericType then
+    if (gen.IsGenericTypeDefinition || gen.IsGenericType) && value.IsGenericType then
         let genDef = if gen.IsGenericType then gen.GetGenericTypeDefinition() else gen
         let valueDef = value.GetGenericTypeDefinition()
         if genDef = valueDef then

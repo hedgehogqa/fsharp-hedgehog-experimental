@@ -3,6 +3,20 @@ namespace Hedgehog
 open System
 open System.Reflection
 
+type internal IAutoGenerator =
+    abstract member Generate<'a> : unit -> Gen<'a>
+
+[<Sealed>]
+type AutoGenContext internal (
+    canRecurse: bool,
+    currentRecursionDepth: int,
+    collectionRange: Range<int>,
+    auto: IAutoGenerator) =
+    member _.CanRecurse = canRecurse
+    member _.CurrentRecursionDepth = currentRecursionDepth
+    member _.CollectionRange = collectionRange
+    member _.AutoGenerate<'a>() : Gen<'a> = auto.Generate<'a>()
+
 type AutoGenConfig = internal {
   seqRange: Range<int> option
   recursionDepth: int option
@@ -42,7 +56,8 @@ module AutoGenConfig =
 
   /// Add a generator to the configuration.
   let addGenerator (gen: Gen<'a>) =
-    mapGenerators (GeneratorCollection.map _.SetItem(typeof<'a>, ([||], fun _ _ -> gen)))
+    let targetType = typeof<'a>
+    mapGenerators (GeneratorCollection.addGenerator targetType targetType [||] (fun _ _ -> gen))
 
   /// Add generators from a given type.
   /// The type is expected to have static methods that return Gen<_>.
@@ -53,8 +68,8 @@ module AutoGenConfig =
             then Some (t.GetGenericArguments().[0])
             else None
 
-      let getAutoGenConfigType (t: Type) =
-          if t = typeof<AutoGenConfig>
+      let getAutogenContextType (t: Type) =
+          if t = typeof<AutoGenContext>
             then Some t
             else None
 
@@ -65,7 +80,7 @@ module AutoGenConfig =
               | None -> None
               | Some types ->
                   getGenType param.ParameterType
-                    |> Option.orElseWith (fun () -> getAutoGenConfigType param.ParameterType)
+                    |> Option.orElseWith (fun () -> getAutogenContextType param.ParameterType)
                     |> Option.map (fun t -> Array.append types [| t |])
           ) (Some [||])
 
@@ -81,5 +96,5 @@ module AutoGenConfig =
               Some (targetType, typeArray, factory)
           | _ -> None)
       |> Seq.fold (fun cfg (targetType, typeArray, factory) ->
-          cfg |> mapGenerators (GeneratorCollection.addGenerator targetType typeArray factory))
+          cfg |> mapGenerators (GeneratorCollection.addGenerator targetType targetType typeArray factory))
           config
