@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using Xunit;
-using FluentAssertions;
+using AwesomeAssertions;
 
 using static Hedgehog.Linq.Property;
 
 namespace Hedgehog.Linq.Tests;
 
-public record NameAge(string Name, int Age);
+public sealed record NameAge(string Name, int Age);
 
 public class GenTests
 {
@@ -18,7 +18,7 @@ public class GenTests
 
     var list = GenX.autoWith<NameAge>(config).Sample(123, 3);
 
-    _ = list.Should().HaveCount(3);
+    list.Should().HaveCount(3);
     _ = list.Should().AllSatisfy(x => x.Name.Should().Be(onlyString));
   }
 
