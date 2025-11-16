@@ -1,5 +1,12 @@
 # Changelog
 
+### 0.10.0 (2025-11-16)
+
+* Better handling recursive types in `GenX.auto`.
+* Added support for generating .NET immutable collections
+* Added support for handling recursion in user-registered generic type generators.
+* Performance improvements by caching reflection data.
+
 ### 0.9.0 (2025-04-27)
 
 * `AutoGenConfig` values can now me merged
