@@ -2,6 +2,10 @@
 
 [![NuGet][nuget-shield]][nuget] [![AppVeyor][appveyor-shield]][appveyor]
 
+> [!WARNING]  
+> This repository is archived and obsolete. The functionalty is merged with [fsharp-hedgehog](https://github.com/cmeeren/fsharp-hedgehog).
+> Use [fsharp-hedgehog](https://github.com/cmeeren/fsharp-hedgehog) for contribution.
+
 [Hedgehog][hedgehog] with batteries included: Auto-generators, extra combinators, and more.
 
 <img src="https://github.com/cmeeren/fsharp-hedgehog-experimental/raw/master/img/SQUARE_hedgehog_615x615.png" width="307" align="right"/>
